@@ -2,7 +2,7 @@
 @author Gonzalo Gasca Meza
         AT&T Labs 
         Date: September 2013
-        Purpose: Sniffs all incoming and outgoing SIP packets
+        Purpose: Sniffs all incoming and outgoing SIP packets and upload geoLocation information to parse.com
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast
@@ -23,7 +23,6 @@ sipMessagesList = []
 class sipCall(Object):
 
     """Create a SIP Call Object"""
-
     def __init__(self):
         logging.info("sipCall() New sipCall object created()")
         print 'sipCall() New sipCall object created()'
@@ -58,10 +57,12 @@ class sipMessage(Object):
     def __init__(self):
         logging.info("sipMessage() New sipMessage object created()")
         print 'sipMessage() New sipMessage object created()'
-        self.__sipHeaderInfo    = {}
-        self.__sipSdpInfo       = {}
-        self.sipMsgSdpContents         = []
-        self.sipMsgHeaderContents      = []
+        #self.__sipHeaderInfo    = {}
+        #self.__sipSdpInfo       = {}
+        self.sipHeaderInfo    = {}
+        self.sipSdpInfo       = {}
+        #self.sipMsgSdpContents         = []
+        #self.sipMsgHeaderContents      = []
         self.hasSDP             = False
         self.sipMsgMethodInfo         = ''
         self.sipMsgCallId       = ''
@@ -73,30 +74,36 @@ class sipMessage(Object):
         return self.sipMsgMethodInfo
 
     def addSipHeader(self,header,value):      
-        self.__sipHeaderInfo.update({header: value})
+        self.sipHeaderInfo.update({header: value})
         logging.info(header + ' ' + value)
         #print header + ' ' + value
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
     
     def addSdpInfo(self,sdpKey,sdpValue):      
-        self.__sipSdpInfo.update({sdpKey: sdpValue})
+        self.sipSdpInfo.update({sdpKey: sdpValue})
         logging.info(sdpKey + '=' + sdpValue)
         #print sdpKey + '=' + sdpValue
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
 
+    def getSipHeaders(self):
+        return self.sipHeaderInfo
+
     def getSdpInfo(self):
+        return self.sipSdpInfo
+
+    """def getSdpInfo(self):
         self.sipMsgSdpContents = []
         # Python 3.x Feature Convert a Python dictionary to a list of tuples
         # http://stackoverflow.com/questions/674519/how-can-i-convert-a-python-dictionary-to-a-list-of-tuples
         self.sipMsgSdpContents = [(key,value) for (key,value) in self.__sipSdpInfo.iteritems()]
-        return self.sipMsgSdpContents
+        return self.sipMsgSdpContents"""
 
-    def getSipHeaders(self):
+    """def getSipHeaders(self):
         self.sipMsgHeaderContents = []
         # Python 3.x Feature Convert a Python dictionary to a list of tuples
         # http://stackoverflow.com/questions/674519/how-can-i-convert-a-python-dictionary-to-a-list-of-tuples
         self.sipMsgHeaderContents = [(key,value) for (key,value) in self.__sipHeaderInfo.iteritems()]
-        return self.sipMsgHeaderContents
+        return self.sipMsgHeaderContents"""
 
     def processSipMsgCallId(self):
         self.sipMsgCallId = self.getSipMsgCallId()
@@ -143,7 +150,10 @@ def processGeoLocation(srcIP):
         try:
             response = urllib.urlopen('http://freegeoip.net/json/' + srcIP ).read()
             geoLocationInfo = response.splitlines()
-            return geoLocationInfo
+            # Obtain Dictionary
+            finalGeoLocationPoint  = ast.literal_eval(geoLocationInfo[0])
+            print finalGeoLocationPoint
+            return finalGeoLocationPoint
         except Exception,e:
             print traceback.format_exc()
             print 'processGeoLocation() Error'
@@ -204,9 +214,9 @@ def processSipPacket(sipMsg,ipInfo):
                 SDP = None
 
         # Process sipHeaders
-        newSipMessage.getSipHeaders()
+        #newSipMessage.getSipHeaders()
         # Process sip SDP info
-        newSipMessage.getSdpInfo()
+        #newSipMessage.getSdpInfo()
         # Process SIP Message                 
         ccEngine(newSipMessage)
         del newSipMessage
@@ -270,12 +280,14 @@ def ccEngine(sipMsg):
            # Process Call GeoPoint
             try:
                 geoLocationInfo = newSipCall.getSipCallGeoLocation()
-                print geoLocationInfo
-                geoPoint = ast.literal_eval(geoLocationInfo[0])
-                geoLocationPoint = []
-                geoLocationPoint.append(geoPoint['latitude'])
-                geoLocationPoint.append(geoPoint['longitude'])
-                newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
+                if geoLocationInfo!=None:
+                    geoLocationPoint = []
+                    geoLocationPoint.append(geoLocationInfo['latitude'])
+                    geoLocationPoint.append(geoLocationInfo['longitude'])
+                    newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
+                else:
+                    print 'processGeoLocationPoint() Error. Empty GeoLocation info'
+                    newSipCall.setSipCallGeoPoint(-1,-1)  
             except Exception,e:
                 print traceback.format_exc()
                 print 'processGeoLocationPoint() Error'
@@ -312,12 +324,14 @@ def ccEngine(sipMsg):
                 # Process Call GeoPoint
                 try:
                     geoLocationInfo = newSipCall.getSipCallGeoLocation()
-                    print geoLocationInfo
-                    geoPoint = ast.literal_eval(geoLocationInfo[0])
-                    geoLocationPoint = []
-                    geoLocationPoint.append(geoPoint['latitude'])
-                    geoLocationPoint.append(geoPoint['longitude'])
-                    newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
+                    if geoLocationInfo!=None:
+                        geoLocationPoint = []
+                        geoLocationPoint.append(geoLocationInfo['latitude'])
+                        geoLocationPoint.append(geoLocationInfo['longitude'])
+                        newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
+                    else:
+                        print 'processGeoLocationPoint() Error. Empty GeoLocation info'
+                        newSipCall.setSipCallGeoPoint(-1,-1)  
                 except Exception,e:
                     print traceback.format_exc()
                     print 'processGeoLocationPoint() Error'
@@ -361,20 +375,7 @@ def sipMessageInsertViaParse(sipMsg):
     except Exception,e:
         print 'sipMessageInsertViaParse() Error'
 
-# Calculate the Distance
-def haversineDistance(location1, location2):
-    """Method to calculate Distance between two sets of Lat/Lon."""
-    lat1, lon1 = location1
-    lat2, lon2 = location2
-    earth = 6371 #Earth's Radius in Kms.
 
-     #Calculate Distance based in Haversine Formula
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    d = earth * c
-    return d
 
 
 #Convert a string of 6 characters of ethernet address into a dash separated hex string
@@ -535,11 +536,6 @@ def initPacketCapture() :
             #some other IP packet like IGMP
             else :
                 print 'Packet - Protocol other than TCP/UDP/ICMP'
-
-
-
-# Create XMLserver
-#server = SimpleXMLRPCServer((sipLocatorConfig.HOSTNAME, sipLocatorConfig.XML_PORT),requestHandler=XmlRequestHandler,logRequests=True)
 
 # Main function
 #@profile

@@ -67,6 +67,18 @@ class sipCall(Object):
  
     def getSipCallId(self): 
         return self.sipCallID
+
+    def setSipCallGeolocation(self,geoLocation):
+        self.sipCallGeoLocation = geoLocation
+
+    def getSipCallGeoLocation(self):
+        return self.sipCallGeoLocation
+
+    def setSipCallGeoPoint(self,latitudeParam,longitudeParam):
+        self.sipCallGeoPoint = GeoPoint(latitude=latitudeParam, longitude=longitudeParam)
+     
+    def getSipCallGeoPoint(self):
+        return self.sipCallGeoPoint     
         
 
 class sipMessage(Object):
@@ -236,10 +248,13 @@ def getSipMessageFromParse(sipMsgCallID):
 def getSipCallFromParse(sipCallParam):
     try:
         print 'getSipCallFromParse() Contacting Parse CallID: ' + sipCallParam
-        parseSipCall = sipCall.Query.get(objectId="nqnEV91uPN")
+        parseSipCall = sipCall.Query.get(sipCallID=sipCallParam)
         print type(parseSipCall)
-        print parseSipCall.sipCallID
         if parseSipCall!=None:
+            print 'getSipCallFromParse() Found call online!'
+            print parseSipCall.sipCallID
+            print parseSipCall.sipCallGeoPoint
+            print parseSipCall.sipCallGeoLocation
             return parseSipCall
         else:
             return None
@@ -319,14 +334,14 @@ def processXmlParameters(msg,type):
 
         # Gets Parse Object
         parseSipCall = getSipCallFromParse(callID)
-        
+
         if parseSipCall!=None:
             xmlResponse.append(parseSipCall.sipCallID)
-            xmlResponse.append(parseSipCall.sipCallGeoLocation)
+            xmlResponse.append(parseSipCall.sipCallGeoPoint)
             if (xmlResponse !=-1 and len(xmlResponse) >= 2):
                 print "get_sipcall() API get.sipcall Call-ID found: " + xmlResponse[0]
                 logInfo(xmlResponse)
-                xmlResponse = {'sipCallID' :xmlResponse[0],'sipCallGeoLocation':xmlResponse[1]}
+                xmlResponse = {'sipCallID' :xmlResponse[0],'sipCallGeoPoint':xmlResponse[1]}
                 return xmlResponse
             else:
                 return fault_code(systemErrors[201],201)
@@ -392,6 +407,22 @@ def insertSipCall(msg):
 def getSipCallGeoLocation(msg):
     print("getSipCallGeoLocation() API getSipCallGeoLocation")
     logInfo("getSipCallGeoLocation() API getSipCallGeoLocation")
+    haversineDistance()
+
+    # Calculate the Distance
+def haversineDistance(location1, location2):
+    """Method to calculate Distance between two sets of Lat/Lon."""
+    lat1, lon1 = location1
+    lat2, lon2 = location2
+    earth = 6371 #Earth's Radius in Kms.
+
+     #Calculate Distance based in Haversine Formula
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    d = earth * c
+    return d
 
 def fault_code(string,code):
     xmlResponse = {'faultCode' :code,'faultString':string }
