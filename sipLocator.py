@@ -10,8 +10,10 @@ from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
 from struct import *
+
 #import psutil
 #from memory_profiler import profile
+
 
 sys.excepthook = lambda *args: None
 
@@ -132,15 +134,18 @@ class sipMessage(Object):
 #Obtain geoLocation
 def processGeoLocation(srcIP):
         try:
-            response = urllib.urlopen('http://freegeoip.net/json/' + srcIP ).read()
-            geoLocationInfo = response.splitlines()
-            # Obtain Dictionary
-            finalGeoLocationPoint  = ast.literal_eval(geoLocationInfo[0])
-            print finalGeoLocationPoint
-            return finalGeoLocationPoint
+            if srcIP!="":
+                response = urllib.urlopen('http://freegeoip.net/json/' + srcIP ).read()
+                geoLocationInfo = response.splitlines()
+                # Obtain Dictionary
+                finalGeoLocationPoint  = ast.literal_eval(geoLocationInfo[0])
+                print finalGeoLocationPoint
+                return finalGeoLocationPoint
+            else:
+                print 'processGeoLocation() Error'
         except Exception,e:
             print traceback.format_exc()
-            print 'processGeoLocation() Error'
+            print 'processGeoLocation() Exception'
 
 
 # Process WS Packet from Wire
@@ -245,8 +250,9 @@ def ccEngine(sipMsg):
             # Multi-threading
             # Process Call GeoLocation
             sipMsgIpInfo = sipMsg.getSipMsgIpInfo()
+            
             try:
-                thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipMsgIpInfo[1]), ))
+                thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipMsgIpInfo.get('s_addr')), ))
                 thread.start()
                 thread.join()
                 #print 'ccEngine() setSipCallGeolocation()'
@@ -289,8 +295,9 @@ def ccEngine(sipMsg):
 
                 # Process Call GeoLocation
                 sipMsgIpInfo = sipMsg.getSipMsgIpInfo()
+
                 try:
-                    thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipMsgIpInfo[1]), ))
+                    thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipMsgIpInfo.get('s_addr')), ))
                     thread.start()
                     thread.join()
                     logging.info('ccEngine() setSipCallGeolocation()')
@@ -351,8 +358,6 @@ def sipMessageInsertViaParse(sipMsg):
         print 'sipMessageInsertViaParse() sipMessage Record created in Parse. ' + sipMsg.getSipMsgMethod() + ' CallID: ' + sipMsg.getSipMsgCallId()
     except Exception,e:
         print 'sipMessageInsertViaParse() Error'
-
-
 
 
 #Convert a string of 6 characters of ethernet address into a dash separated hex string
@@ -436,7 +441,16 @@ def initPacketCapture() :
                     data_size = len(packet) - h_size
                     #get data from the packet
                     data = packet[h_size:] 
-                    ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
+
+                    # Change to Dictionary Data 'protocol','s_addr','source_port','d_addr','dest_port'
+                    # member['sipMsgSdpInfo'] = parseSipMsg.getSdpInfo()
+                    #ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
+                    ipInfo = {}
+                    ipInfo['protocol'] = protocol
+                    ipInfo['s_addr'] = str(s_addr)
+                    ipInfo['source_port'] = source_port
+                    ipInfo['d_addr'] = str(d_addr)
+                    ipInfo['dest_port'] = dest_port
                     processSipPacket(data,ipInfo)
      
                 if dest_port == sipLocatorConfig.WS_PORT:   
@@ -451,7 +465,13 @@ def initPacketCapture() :
                     data_size = len(packet) - h_size
                     #get data from the packet
                     data = packet[h_size:] 
-                    ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
+                    # Change to Dictionary Data 'protocol','s_addr','source_port','d_addr','dest_port'
+                    ipInfo = {}
+                    ipInfo['protocol'] = protocol
+                    ipInfo['s_addr'] = str(s_addr)
+                    ipInfo['source_port'] = source_port
+                    ipInfo['d_addr'] = str(d_addr)
+                    ipInfo['dest_port'] = dest_port
                     processWsPacket(data,ipInfo)
 
 
@@ -506,7 +526,13 @@ def initPacketCapture() :
                  
                     #get data from the packet
                     data = packet[h_size:] 
-                    ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)] 
+                    # Change to Dictionary Data 'protocol','s_addr','source_port','d_addr','dest_port'
+                    ipInfo = {}
+                    ipInfo['protocol'] = protocol
+                    ipInfo['s_addr'] = str(s_addr)
+                    ipInfo['source_port'] = source_port
+                    ipInfo['d_addr'] = str(d_addr)
+                    ipInfo['dest_port'] = dest_port
                     processSipPacket(data,ipInfo)
          
 
