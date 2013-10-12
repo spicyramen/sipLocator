@@ -387,8 +387,15 @@ def processSipXmlParameters(msg,type):
             for parseSipMsg in parseSipMessages:
                 member['sipMsgCallId'] = parseSipMsg.sipMsgCallId
                 member['sipMsgMethodInfo'] = parseSipMsg.sipMsgMethodInfo
+                # Filters
                 if getSDP:
-                    member['sipMsgSdpInfo'] = parseSipMsg.getSdpInfo()
+                    if parseSipMsg.hasSDP:
+                        for key, value in parseSipMsg.getSdpInfo().items():
+                            struct.append((key,value))
+                            member['sipMsgSdpInfo'] = struct
+                        struct = []
+                    else:
+                        member['sipMsgSdpInfo'] = []
                 if getHeaders:
                     print parseSipMsg.getSipHeaders()
                     member['sipHeaderInfo'] = parseSipMsg.getSipHeaders()
