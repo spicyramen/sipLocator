@@ -14,6 +14,7 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 from parse_rest.connection import register
 from parse_rest.datatypes import Object
+from parse_rest.query import QueryResourceDoesNotExist
 from struct import *
 sys.excepthook = lambda *args: None
 
@@ -245,6 +246,8 @@ def getSipMessageFromParse(sipMsgCallID):
     parseSipMessages = sipMessage.Query.filter(sipCallID=sipMsgCallID)
     return parseSipMessages
 
+#Connects to Parse using parse_rest
+#https://github.com/dgrtwo/ParsePy
 def getSipCallFromParse(sipCallParam):
     try:
         print 'getSipCallFromParse() Contacting Parse CallID: ' + sipCallParam
@@ -258,10 +261,12 @@ def getSipCallFromParse(sipCallParam):
             return parseSipCall
         else:
             return None
+    except QueryResourceDoesNotExist:
+        print 'QueryResourceDoesNotExist Call not found'
+        return 4
     except Exception,e:
         print traceback.format_exc()
-        print 'getSipCallFromParse() Error'
-
+        return None
 
 # Logging info
 def logInfo(msg):
@@ -303,7 +308,7 @@ def authenticationModule(username,password):
         return False
 
 #Obtain parameters from XML Call
-def processXmlParameters(msg,type):
+def processSipXmlParameters(msg,type):
     xmlResponse = []
     print msg
     params = copy.deepcopy(msg)
@@ -334,8 +339,14 @@ def processXmlParameters(msg,type):
 
         # Gets Parse Object
         parseSipCall = getSipCallFromParse(callID)
-
-        if parseSipCall!=None:
+        # Call not found in Parse
+        if parseSipCall==4:
+            xmlResponse.append(4)
+            return xmlResponse
+        elif parseSipCall==None:
+            xmlResponse.append(-1)
+            return xmlResponse
+        else:
             xmlResponse.append(parseSipCall.sipCallID)
             xmlResponse.append(parseSipCall.sipCallGeoPoint)
             if (xmlResponse !=-1 and len(xmlResponse) >= 2):
@@ -344,13 +355,10 @@ def processXmlParameters(msg,type):
                 xmlResponse = {'sipCallID' :xmlResponse[0],'sipCallGeoPoint':xmlResponse[1]}
                 return xmlResponse
             else:
-                return fault_code(systemErrors[201],201)
-        else:
-            return fault_code(systemErrors[201],201)
-
-        
+                xmlResponse.append(-1)
+                return xmlResponse
     else:
-        return -1            
+        return fault_code(systemErrors[34],34)          
 
 ###########################################################################################
 # API Method implementation
@@ -372,18 +380,21 @@ def getSipMessage(msg):
     elif(params == 101):
         return fault_code(systemErrors[101],101)
     else:
-        xmlResponse = processXmlParameters(params,sipLocatorConfig.XML_SIP_MESSAGE)
-        if (xmlResponse!=-1):
+        xmlResponse = processSipXmlParameters(params,sipLocatorConfig.XML_SIP_MESSAGE)
+        if 5 in xmlResponse:
+            return fault_code(systemErrors[5],5)
+        if -1 in xmlResponse:
+            return fault_code(systemErrors[201],201)
+        else:
             logInfo(xmlResponse)
             return xmlResponse
-        else:
-            return fault_code(systemErrors[4],4)
 
-
+#API Method insert.sipmessage
 def insertSipMessage(msg):
     print("insertSipMessage() API insertSipMessage")
     logInfo("insertSipMessage() API insertSipMessage")
 
+#API Method get.sipcall
 def getSipCall(msg):
     print("getSipCall() API getSipCall")
     logInfo("getSipCall() API getSipCall")
@@ -393,13 +404,17 @@ def getSipCall(msg):
     elif(params == 101):
         return fault_code(systemErrors[101],101)
     else:
-        xmlResponse = processXmlParameters(params,sipLocatorConfig.XML_SIP_CALL)
-        if (xmlResponse!=-1):
+        xmlResponse = processSipXmlParameters(params,sipLocatorConfig.XML_SIP_CALL)
+        if 4 in xmlResponse:
+            return fault_code(systemErrors[4],4)
+        if -1 in xmlResponse:
+            return fault_code(systemErrors[201],201)
+        else:
             logInfo(xmlResponse)
             return xmlResponse
-        else:
-            return fault_code(systemErrors[4],4)
+           
 
+#API Method insert.sipcall
 def insertSipCall(msg):
     print("insertSipCall() API insertSipCall")
     logInfo("insertSipCall() API insertSipCall")
