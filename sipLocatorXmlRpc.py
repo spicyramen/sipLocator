@@ -389,23 +389,17 @@ def processSipXmlParameters(msg,type):
                 member['sipMsgMethodInfo'] = parseSipMsg.sipMsgMethodInfo
                 # Filters
                 if getSDP:
-                    if parseSipMsg.hasSDP:
-                        for key, value in parseSipMsg.getSdpInfo().items():
-                            struct.append((key,value))
-                            member['sipMsgSdpInfo'] = struct
-                        struct = []
+                    if parseSipMsg.hasSDP:    
+                        member['sipMsgSdpInfo'] = parseSipMsg.getSdpInfo()
                     else:
                         member['sipMsgSdpInfo'] = []
                 if getHeaders:
-                    print parseSipMsg.getSipHeaders()
                     member['sipHeaderInfo'] = parseSipMsg.getSipHeaders()
                 if getIP:
-                    print parseSipMsg.getSipMsgIpInfo()
                     member['sipMsgIpInfo']  = parseSipMsg.getSipMsgIpInfo()
 
                 xmlResponse.append(member)
                 member = {}
-
             return xmlResponse
 
     elif type==sipLocatorConfig.XML_SIP_CALL:
