@@ -10,10 +10,11 @@ import socket, sys,logging,traceback,re,urllib
 import threading
 import thread
 import copy
+import math
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 from parse_rest.connection import register
-from parse_rest.datatypes import Object
+from parse_rest.datatypes import Object,GeoPoint
 from parse_rest.query import Queryset
 from parse_rest.query import QueryResourceDoesNotExist
 from struct import *
@@ -28,9 +29,10 @@ systemErrors = {
     4: 'No such callID',
     5: 'No such message',
     6: 'Too many calls.',
+    7: 'Too many messages.',
     8: 'No callID supplied',
     10: 'No geoLocation supplied',
-    13: 'Invalid PIN specified',
+    13: 'GeoLocation search not enabled',
     15: 'Insufficient privileges',
     16: 'Invalid callID value',
     17: 'Call reservation failure',
@@ -63,6 +65,7 @@ class sipCall(Object):
             assert "sipCallID" in kwargs
             Object.__init__(self, **kwargs)
     except Exception:
+        print 'sipCall() __init__ error'
         print traceback.format_exc()
 
     def setCallId(self,param):
@@ -88,8 +91,8 @@ class sipMessage(Object):
     """Create a SIP Message Object"""
     try:
         def __init__(self, **kwargs):
-            logging.info("sipMessage() New sipMessage object retrieved()")
-            print 'sipMessage() New sipMessage object retrieved()'
+            logging.info("sipMessage() __init__ sipMessage")
+            print 'sipMessage() __init__ sipMessage'
             self.hasSDP             = False
             self.sipHeaderInfo      = {}
             self.sipMsgSdpInfo      = {}            
@@ -99,7 +102,7 @@ class sipMessage(Object):
             assert "sipMsgCallId" in kwargs
             Object.__init__(self, **kwargs)
     except Exception:
-        print 'sipMessage() init error'
+        print 'sipMessage() __init__ error'
         print traceback.format_exc()
 
     def setSipMessage(self,msg):
@@ -244,26 +247,6 @@ def sipMessageInsertViaParse(sipMsg):
     except Exception,e:
         print 'sipMessageInsertViaParse() Error'
 
-def getSipMessageFromParse(sipMsgParam):
-    try:
-        print 'getSipMessageFromParse() Contacting Parse to find message using sipMsgCallID: ' + sipMsgParam + ' API get.sipmessage'
-        parseSipMessages = sipMessage.Query.all().filter(sipMsgCallId=sipMsgParam)
-        print type(parseSipMessages)
-        print 'getSipMessageFromParse() SIP Messages found: ' + str(parseSipMessages.count()) + ' API get.sipmessage'
-        logInfo('getSipMessageFromParse() SIP Messages found: ' + str(parseSipMessages.count()) + ' API get.sipmessage')
-        if parseSipMessages!=None:
-            return parseSipMessages
-        elif parseSipMessages.count()==0:
-            return 5
-        else:
-            return None
-    except QueryResourceDoesNotExist:
-        print 'QueryResourceDoesNotExist Message not found'
-        return 5
-    except Exception,e:
-        print traceback.format_exc()
-        return None
-
 #Connects to Parse using parse_rest
 #https://github.com/dgrtwo/ParsePy
 def getSipCallFromParse(sipCallParam):
@@ -287,6 +270,30 @@ def getSipCallFromParse(sipCallParam):
     except Exception,e:
         print traceback.format_exc()
         return None
+
+
+def getSipMessageFromParse(sipMsgParam):
+    try:
+        print 'getSipMessageFromParse() Contacting Parse to find message using sipMsgCallID: ' + sipMsgParam + ' API get.sipmessage'
+        parseSipMessages = sipMessage.Query.all().filter(sipMsgCallId=sipMsgParam)
+        print type(parseSipMessages)
+        print 'getSipMessageFromParse() SIP Messages found in Parse (' + str(parseSipMessages.count()) + ') API get.sipmessage'
+        logInfo('getSipMessageFromParse() SIP Messages found in Parse (' + str(parseSipMessages.count()) + ') API get.sipmessage')
+        if parseSipMessages.count() > sipLocatorConfig.XML_SIP_MESSAGE_LIMIT:
+            return 7
+        elif parseSipMessages.count()==0:
+            return 5
+        elif parseSipMessages!=None:
+            return parseSipMessages    
+        else:
+            return None
+    except QueryResourceDoesNotExist:
+        print 'QueryResourceDoesNotExist Message not found'
+        return 5
+    except Exception,e:
+        print traceback.format_exc()
+        return None
+
 
 # Logging info
 def logInfo(msg):
@@ -344,7 +351,6 @@ def processSipXmlParameters(msg,type):
     # 'getSDP'    :True
     # 'getHeaders':True
     # 'getIP'     :True
-    # 'hasSDP'    :True
 
     # Verify authentication and then collect other parameters
     if type==sipLocatorConfig.XML_SIP_MESSAGE:
@@ -377,14 +383,18 @@ def processSipXmlParameters(msg,type):
         if parseSipMessages==5:
             xmlResponse.append(5)
             return xmlResponse
+        elif parseSipMessages==7:
+            xmlResponse.append(7)
+            return xmlResponse
         elif parseSipMessages==None:
             xmlResponse.append(-1)
             return xmlResponse
         else:
-            print 'processSipXmlParameters() SIP Messages found API get.sipmessage'
-            logInfo('processSipXmlParameters() SIP Messages found API get.sipmessage')
-            #http://stackoverflow.com/questions/60848/how-do-you-retrieve-items-from-a-dictionary-in-the-order-that-theyre-inserted
+            print 'processSipXmlParameters() Processing SIP Messages found API get.sipmessage'
+            logInfo('processSipXmlParameters() Processing SIP Messages found API get.sipmessage')
+
             for parseSipMsg in parseSipMessages:
+                
                 member['sipMsgCallId'] = parseSipMsg.sipMsgCallId
                 member['sipMsgMethodInfo'] = parseSipMsg.sipMsgMethodInfo
                 # Filters
@@ -397,7 +407,7 @@ def processSipXmlParameters(msg,type):
                     member['sipHeaderInfo'] = parseSipMsg.getSipHeaders()
                 if getIP:
                     member['sipMsgIpInfo']  = parseSipMsg.getSipMsgIpInfo()
-
+                # Add call to XML Response
                 xmlResponse.append(member)
                 member = {}
             return xmlResponse
@@ -437,6 +447,64 @@ def processSipXmlParameters(msg,type):
             else:
                 xmlResponse.append(-1)
                 return xmlResponse
+
+    elif type==sipLocatorConfig.XML_SIP_GEOLOCATION:
+
+        for element in params:
+            if element == 'sipCallID':
+                callID = params.get('sipCallID')
+
+        if len(callID)>256 and not isinstance(callID, str):
+            xmlResponse.append(16)
+            return xmlResponse
+
+        # Gets Parse Object
+        # Verify param is Found
+        if len(callID)!=0:
+            parseSipCall = getSipCallFromParse(callID)
+        else:
+            xmlResponse.append(16)
+            return xmlResponse
+
+        # Call not found in Parse
+        if parseSipCall==4:
+            xmlResponse.append(4)
+            return xmlResponse
+        # Nothing is return
+        elif parseSipCall == None:
+            xmlResponse.append(-1)
+            return xmlResponse
+        else:
+            location = parseSipCall.sipCallGeoPoint
+            print 'sipCall latitude : ' +  str(location.latitude)
+            print 'sipCall longitude: ' +  str(location.longitude)
+
+            sipCallLatitude = location.latitude
+            sipCallLongitude = location.longitude
+            systemLatitude = sipLocatorConfig.XML_GEOLOCATION.get('latitude')
+            systemLongitude = sipLocatorConfig.XML_GEOLOCATION.get('longitude')
+
+            if sipCallLongitude!=None and sipCallLatitude!=None:
+                distance = haversineDistance((sipCallLatitude,sipCallLongitude),(systemLatitude,systemLongitude))
+                xmlResponse.append(parseSipCall.sipCallID)
+                xmlResponse.append(round(distance,2))
+            else:
+                xmlResponse.append(-1)
+                return xmlResponse
+        try:   
+            if (xmlResponse !=-1 and len(xmlResponse) >= 2):
+                print "processSipXmlParameters() API get.sipcallgeolocation Call-ID found: " + xmlResponse[0]
+                print "processSipXmlParameters() API get.sipcallgeolocation Distance: " + str(xmlResponse[1])
+                logInfo(xmlResponse)
+                xmlResponse = {'sipCallID' :xmlResponse[0],'sipCallDistance':xmlResponse[1]}
+                return xmlResponse
+            else:
+                xmlResponse.append(-1)
+                return xmlResponse        
+        except Exception:
+            print traceback.format_exc()
+            return fault_code(systemErrors[34],34) 
+
     else:
         return fault_code(systemErrors[34],34)          
 
@@ -463,6 +531,8 @@ def getSipMessage(msg):
         xmlResponse = processSipXmlParameters(params,sipLocatorConfig.XML_SIP_MESSAGE)
         if 5 in xmlResponse:
             return fault_code(systemErrors[5],5)
+        if 7 in xmlResponse:
+            return fault_code(systemErrors[7],7)    
         if -1 in xmlResponse:
             return fault_code(systemErrors[201],201)
         else:
@@ -494,7 +564,6 @@ def getSipCall(msg):
         else:
             logInfo(xmlResponse)
             return xmlResponse
-           
 
 #API Method insert.sipcall
 def insertSipCall(msg):
@@ -502,13 +571,34 @@ def insertSipCall(msg):
     logInfo("insertSipCall() API insertSipCall")
 
 def getSipCallGeoLocation(msg):
-    print("getSipCallGeoLocation() API getSipCallGeoLocation")
-    logInfo("getSipCallGeoLocation() API getSipCallGeoLocation")
-    haversineDistance()
+    print("getSipCallGeoLocation() API get.sipcallgeolocation")
+    logInfo("getSipCallGeoLocation() API get.sipcallgeolocation")
+    params = xmlRequestHandler(msg)
+    if (params == 34):
+        return fault_code(systemErrors[34],34)
+    elif(params == 101):
+        return fault_code(systemErrors[101],101)
+    else:
+        if sipLocatorConfig.XML_GEO_SEARCH_ENABLED:
+            xmlResponse = processSipXmlParameters(params,sipLocatorConfig.XML_SIP_GEOLOCATION)
+            if 4 in xmlResponse:
+                return fault_code(systemErrors[4],4)
+            elif 16 in xmlResponse:
+                return fault_code(systemErrors[16],16)    
+            elif -1 in xmlResponse:
+                return fault_code(systemErrors[201],201)
+            else:
+                logInfo(xmlResponse)
+                return xmlResponse
+        else:
+            return fault_code(systemErrors[13],13)
 
     # Calculate the Distance
 def haversineDistance(location1, location2):
+    print 'haversineDistance()'
     """Method to calculate Distance between two sets of Lat/Lon."""
+    #http://en.wikipedia.org/wiki/Haversine_formula
+
     lat1, lon1 = location1
     lat2, lon2 = location2
     earth = 6371 #Earth's Radius in Kms.
