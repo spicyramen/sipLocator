@@ -57,15 +57,11 @@ class sipMessage(Object):
     def __init__(self):
         logging.info("sipMessage() New sipMessage object created()")
         print 'sipMessage() New sipMessage object created()'
-        #self.__sipHeaderInfo    = {}
-        #self.__sipSdpInfo       = {}
         self.sipHeaderInfo    = {}
-        self.sipSdpInfo       = {}
-        #self.sipMsgSdpContents         = []
-        #self.sipMsgHeaderContents      = []
-        self.hasSDP             = False
-        self.sipMsgMethodInfo         = ''
-        self.sipMsgCallId       = ''
+        self.sipMsgSdpInfo    = {}
+        self.hasSDP           = False
+        self.sipMsgMethodInfo = ''
+        self.sipMsgCallId     = ''
     
     def setSipMessage(self,msg):
         self.sipMsgMethodInfo = msg
@@ -80,7 +76,7 @@ class sipMessage(Object):
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
     
     def addSdpInfo(self,sdpKey,sdpValue):      
-        self.sipSdpInfo.update({sdpKey: sdpValue})
+        self.sipMsgSdpInfo.update({sdpKey: sdpValue})
         logging.info(sdpKey + '=' + sdpValue)
         #print sdpKey + '=' + sdpValue
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
@@ -89,21 +85,7 @@ class sipMessage(Object):
         return self.sipHeaderInfo
 
     def getSdpInfo(self):
-        return self.sipSdpInfo
-
-    """def getSdpInfo(self):
-        self.sipMsgSdpContents = []
-        # Python 3.x Feature Convert a Python dictionary to a list of tuples
-        # http://stackoverflow.com/questions/674519/how-can-i-convert-a-python-dictionary-to-a-list-of-tuples
-        self.sipMsgSdpContents = [(key,value) for (key,value) in self.__sipSdpInfo.iteritems()]
-        return self.sipMsgSdpContents"""
-
-    """def getSipHeaders(self):
-        self.sipMsgHeaderContents = []
-        # Python 3.x Feature Convert a Python dictionary to a list of tuples
-        # http://stackoverflow.com/questions/674519/how-can-i-convert-a-python-dictionary-to-a-list-of-tuples
-        self.sipMsgHeaderContents = [(key,value) for (key,value) in self.__sipHeaderInfo.iteritems()]
-        return self.sipMsgHeaderContents"""
+        return self.sipMsgSdpInfo
 
     def processSipMsgCallId(self):
         self.sipMsgCallId = self.getSipMsgCallId()
@@ -116,9 +98,9 @@ class sipMessage(Object):
 
     def getSipMsgCallId(self):
         try:
-            callInfo = dict(self.sipMsgHeaderContents)
+            callInfo = self.sipHeaderInfo['Call-ID:']
             #logger.info('getSipCallId() Sip Call-ID: ' + callInfo.get('Call-ID:'))
-            return callInfo.get('Call-ID:')
+            return callInfo
         except Exception,e:
             print traceback.format_exc()
     
@@ -130,9 +112,7 @@ class sipMessage(Object):
     
     def processSipMsgSdp(self):
         try:
-            callInfo = dict(self.sipMsgHeaderContents)
-
-            sipMsgContainsMedia = callInfo.get('Content-Type:')
+            sipMsgContainsMedia = self.sipHeaderInfo['Content-Type:']
             if sipMsgContainsMedia is not None:
                 if sipMsgContainsMedia.find('application/sdp')!=-1:
                     #logging.info("processSipMsgSdp() SDP found")
@@ -140,8 +120,12 @@ class sipMessage(Object):
                     self.hasSDP = True
             else:
                 # No SDP  
-                self.hasSDP = False 
+                self.hasSDP = False
+        # Not all SIP Message contain SDP nor Content-Type        
+        except KeyError:    
+            pass    
         except Exception,e:
+            print traceback.format_exc()
             print 'processSipMsgSdp() Error'
 
 
@@ -169,11 +153,6 @@ def processWsPacket(wsMsg,ipInfo):
 # Process SIP Packet from Wire
 #@profile
 def processSipPacket(sipMsg,ipInfo):
-
-    #sipRegex = '(\w+\s+sip:.*)|(^SIP/2.0\s.*)'
-    #sipHeaderRegex = '(^\w+:) (.*)|([A-Za-z]+-[A-Za-z]+:) (.*)'
-    #sipSdpRegex = '(^[A-Za-z])=(.*)'
-
     logging.info("------------------------------------------------------Processing SIP message------------------------------------------------------")
     print "------------------------------------------------------Processing SIP message------------------------------------------------------"
     #ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
@@ -223,8 +202,6 @@ def processSipPacket(sipMsg,ipInfo):
 
     except Exception,e:
         logging.error("processSipPacket() Exception found " + str(e))    
-
-
 
 
 # CcEngine

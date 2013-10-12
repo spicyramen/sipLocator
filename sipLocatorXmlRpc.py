@@ -14,8 +14,10 @@ from SimpleXMLRPCServer import SimpleXMLRPCServer
 from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 from parse_rest.connection import register
 from parse_rest.datatypes import Object
+from parse_rest.query import Queryset
 from parse_rest.query import QueryResourceDoesNotExist
 from struct import *
+
 sys.excepthook = lambda *args: None
 
 register(sipLocatorConfig.APPLICATION_ID, sipLocatorConfig.REST_API_KEY)
@@ -85,63 +87,62 @@ class sipCall(Object):
 class sipMessage(Object):
     """Create a SIP Message Object"""
     try:
-        def __init__(self):
-            logging.info("sipMessage() New sipMessage object created()")
-            print 'sipMessage() New sipMessage object created()'
-            self.__sipHeaderInfo    = {}
-            self.__sipSdpInfo       = {}
-            self.sipMsgGeoLocation  = {}
-            self.sipMessageInfo     = ''
-            self.sipSdpList         = []
-            self.sipHeaderList      = []
-            self.hasSDP              = False
+        def __init__(self, **kwargs):
+            logging.info("sipMessage() New sipMessage object retrieved()")
+            print 'sipMessage() New sipMessage object retrieved()'
+            self.hasSDP             = False
+            self.sipHeaderInfo      = {}
+            self.sipMsgSdpInfo      = {}            
+            self.sipMsgMethodInfo   = ''
+            self.sipMsgCallId       = ''
+            self.sipMsgCallId = kwargs
+            assert "sipMsgCallId" in kwargs
+            Object.__init__(self, **kwargs)
     except Exception:
+        print 'sipMessage() init error'
         print traceback.format_exc()
 
     def setSipMessage(self,msg):
-        self.sipMessageInfo = msg
+        self.sipMsgMethodInfo = msg
   
     def getSipMsgMethod(self):
-        return self.sipMessageInfo
+        return self.sipMsgMethodInfo
 
     def addSipHeader(self,header,value):      
-        self.__sipHeaderInfo.update({header: value})
-        print header + ' ' + value
+        self.sipHeaderInfo.update({header: value})
+        logging.info(header + ' ' + value)
+        #print header + ' ' + value
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
     
     def addSdpInfo(self,sdpKey,sdpValue):      
-        self.__sipSdpInfo.update({sdpKey: sdpValue})
-        print sdpKey + '=' + sdpValue
+        self.sipMsgSdpInfo.update({sdpKey: sdpValue})
+        logging.info(sdpKey + '=' + sdpValue)
+        #print sdpKey + '=' + sdpValue
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
 
-    def getSdpInfo(self):
-        self.sipSdpList = []
-        # Python 3.x Feature Convert a Python dictionary to a list of tuples
-        # http://stackoverflow.com/questions/674519/how-can-i-convert-a-python-dictionary-to-a-list-of-tuples
-        self.sipSdpList = [(key,value) for (key,value) in self.__sipSdpInfo.iteritems()]
-        return self.sipSdpList
-
     def getSipHeaders(self):
-        self.sipHeaderList = []
-        # Python 3.x Feature Convert a Python dictionary to a list of tuples
-        # http://stackoverflow.com/questions/674519/how-can-i-convert-a-python-dictionary-to-a-list-of-tuples
-        self.sipHeaderList = [(key,value) for (key,value) in self.__sipHeaderInfo.iteritems()]
-        return self.sipHeaderList
+        return self.sipHeaderInfo
+
+    def getSdpInfo(self):
+        return self.sipMsgSdpInfo
+
+    def processSipMsgCallId(self):
+        self.sipMsgCallId = self.getSipMsgCallId()
+
+    def setSipMsgCallId(self,sipMsgCallIdParam):
+        if len(sipMsgCallIdParam)!=0:
+            self.setSipMsgCallId = sipMsgCallIdParam  
+        else:
+            self.setSipMsgCallId = self.getSipMsgCallId()
 
     def getSipMsgCallId(self):
         try:
-            callInfo = dict(self.sipHeaderList)
+            callInfo = self.sipHeaderInfo['Call-ID:']
             #logger.info('getSipCallId() Sip Call-ID: ' + callInfo.get('Call-ID:'))
-            return callInfo.get('Call-ID:')
+            return callInfo
         except Exception,e:
-            print 'getSipMsgCallId() Error'
+            print traceback.format_exc()
     
-    def setSipMsgGeolocation(self,geoLocation):
-        self.sipMsgGeoLocation = geoLocation
-
-    def getSipMsgGeoLocation(self):
-        return self.sipMsgGeoLocation
-
     def setSipMsgIpInfo(self,ipInfo):
         self.sipMsgIpInfo = ipInfo
 
@@ -150,18 +151,19 @@ class sipMessage(Object):
     
     def processSipMsgSdp(self):
         try:
-            callInfo = dict(self.sipHeaderList)
-
-            sipMsgContainsMedia = callInfo.get('Content-Type:')
+            sipMsgContainsMedia = self.sipHeaderInfo['Content-Type:']
             if sipMsgContainsMedia is not None:
                 if sipMsgContainsMedia.find('application/sdp')!=-1:
-                    logging.info("processSipMsgSdp() SDP found")
-                    print 'processSipMsgSdp() SDP found'
+                    #logging.info("processSipMsgSdp() SDP found")
                     self.hasSDP = True
             else:
                 # No SDP  
-                self.hasSDP = False 
+                self.hasSDP = False
+        # Not all SIP Message contain SDP nor Content-Type        
+        except KeyError:    
+            pass    
         except Exception,e:
+            print traceback.format_exc()
             print 'processSipMsgSdp() Error'
 
 
@@ -242,22 +244,40 @@ def sipMessageInsertViaParse(sipMsg):
     except Exception,e:
         print 'sipMessageInsertViaParse() Error'
 
-def getSipMessageFromParse(sipMsgCallID):
-    parseSipMessages = sipMessage.Query.filter(sipCallID=sipMsgCallID)
-    return parseSipMessages
+def getSipMessageFromParse(sipMsgParam):
+    try:
+        print 'getSipMessageFromParse() Contacting Parse to find message using sipMsgCallID: ' + sipMsgParam + ' API get.sipmessage'
+        parseSipMessages = sipMessage.Query.all().filter(sipMsgCallId=sipMsgParam)
+        print type(parseSipMessages)
+        print 'getSipMessageFromParse() SIP Messages found: ' + str(parseSipMessages.count()) + ' API get.sipmessage'
+        logInfo('getSipMessageFromParse() SIP Messages found: ' + str(parseSipMessages.count()) + ' API get.sipmessage')
+        if parseSipMessages!=None:
+            return parseSipMessages
+        elif parseSipMessages.count()==0:
+            return 5
+        else:
+            return None
+    except QueryResourceDoesNotExist:
+        print 'QueryResourceDoesNotExist Message not found'
+        return 5
+    except Exception,e:
+        print traceback.format_exc()
+        return None
 
 #Connects to Parse using parse_rest
 #https://github.com/dgrtwo/ParsePy
 def getSipCallFromParse(sipCallParam):
     try:
         print 'getSipCallFromParse() Contacting Parse CallID: ' + sipCallParam
+
         parseSipCall = sipCall.Query.get(sipCallID=sipCallParam)
         print type(parseSipCall)
         if parseSipCall!=None:
             print 'getSipCallFromParse() Found call online!'
-            print parseSipCall.sipCallID
-            print parseSipCall.sipCallGeoPoint
-            print parseSipCall.sipCallGeoLocation
+            logInfo('getSipCallFromParse() Found call online!')
+            logInfo(parseSipCall.sipCallID)
+            logInfo(parseSipCall.sipCallGeoPoint)
+            logInfo(parseSipCall.sipCallGeoLocation)
             return parseSipCall
         else:
             return None
@@ -310,35 +330,94 @@ def authenticationModule(username,password):
 #Obtain parameters from XML Call
 def processSipXmlParameters(msg,type):
     xmlResponse = []
-    print msg
+    struct = []
+    member = {}
     params = copy.deepcopy(msg)
     callID = ''
+    getSDP = False
+    getHeaders = False
+    getIP = False
+    hasSDP = False
+    print msg
+
+    #  Optional
+    # 'getSDP'    :True
+    # 'getHeaders':True
+    # 'getIP'     :True
+    # 'hasSDP'    :True
 
     # Verify authentication and then collect other parameters
     if type==sipLocatorConfig.XML_SIP_MESSAGE:
+
         for element in params:
             if element == 'sipMsgCallID':
-                callID = params.get('sipMsgCallID')  
-        
-        #   Add '' to callID in case is not coming like that
-        #if callID.find("'")==-1:
-        #    callID = "'" + callID + "'"         
+                callID = params.get('sipMsgCallID')
+            if element == 'getSDP':
+                getSDP = params.get('getSDP') 
+            if element == 'getHeaders':
+                getHeaders = params.get('getHeaders') 
+            if element == 'getIP':
+                getIP = params.get('getIP') 
+            if element == 'hasSDP':
+                hasSDP = params.get('hasSDP')
 
-        if len(callID)>80 and not isinstance(callID, str):
-            return -1
-        getSipMessageFromParse(callID)
+        if len(callID)>256 and not isinstance(callID, str):
+            xmlResponse.append(16)
+            return xmlResponse
 
+        # Verify param is Found
+        if len(callID) != 0:
+            #QuerySet of SIP Message Objects
+            parseSipMessages = getSipMessageFromParse(callID)
+        else:
+            xmlResponse.append(16)
+            return xmlResponse
+
+         # Call message found in Parse
+        if parseSipMessages==5:
+            xmlResponse.append(5)
+            return xmlResponse
+        elif parseSipMessages==None:
+            xmlResponse.append(-1)
+            return xmlResponse
+        else:
+            print 'processSipXmlParameters() SIP Messages found API get.sipmessage'
+            logInfo('processSipXmlParameters() SIP Messages found API get.sipmessage')
+            #http://stackoverflow.com/questions/60848/how-do-you-retrieve-items-from-a-dictionary-in-the-order-that-theyre-inserted
+            for parseSipMsg in parseSipMessages:
+                member['sipMsgCallId'] = parseSipMsg.sipMsgCallId
+                member['sipMsgMethodInfo'] = parseSipMsg.sipMsgMethodInfo
+                if getSDP:
+                    member['sipMsgSdpInfo'] = parseSipMsg.getSdpInfo()
+                if getHeaders:
+                    print parseSipMsg.getSipHeaders()
+                    member['sipHeaderInfo'] = parseSipMsg.getSipHeaders()
+                if getIP:
+                    print parseSipMsg.getSipMsgIpInfo()
+                    member['sipMsgIpInfo']  = parseSipMsg.getSipMsgIpInfo()
+
+                xmlResponse.append(member)
+                member = {}
+
+            return xmlResponse
 
     elif type==sipLocatorConfig.XML_SIP_CALL:
         for element in params:
             if element == 'sipCallID':
                 callID = params.get('sipCallID')       
 
-        if len(callID)>80 and not isinstance(callID, str):
-            return -1
+        if len(callID)>256 and not isinstance(callID, str):
+            xmlResponse.append(16)
+            return xmlResponse
 
         # Gets Parse Object
-        parseSipCall = getSipCallFromParse(callID)
+        # Verify param is Found
+        if len(callID) != 0:
+            parseSipCall = getSipCallFromParse(callID)
+        else:
+            xmlResponse.append(16)
+            return xmlResponse
+
         # Call not found in Parse
         if parseSipCall==4:
             xmlResponse.append(4)
@@ -350,7 +429,7 @@ def processSipXmlParameters(msg,type):
             xmlResponse.append(parseSipCall.sipCallID)
             xmlResponse.append(parseSipCall.sipCallGeoPoint)
             if (xmlResponse !=-1 and len(xmlResponse) >= 2):
-                print "get_sipcall() API get.sipcall Call-ID found: " + xmlResponse[0]
+                print "processSipXmlParameters() API get.sipcall Call-ID found: " + xmlResponse[0]
                 logInfo(xmlResponse)
                 xmlResponse = {'sipCallID' :xmlResponse[0],'sipCallGeoPoint':xmlResponse[1]}
                 return xmlResponse
@@ -396,8 +475,8 @@ def insertSipMessage(msg):
 
 #API Method get.sipcall
 def getSipCall(msg):
-    print("getSipCall() API getSipCall")
-    logInfo("getSipCall() API getSipCall")
+    print("getSipCall() API get.sipcall")
+    logInfo("getSipCall() API get.sipcall")
     params = xmlRequestHandler(msg)
     if (params == 34):
         return fault_code(systemErrors[34],34)
@@ -407,7 +486,9 @@ def getSipCall(msg):
         xmlResponse = processSipXmlParameters(params,sipLocatorConfig.XML_SIP_CALL)
         if 4 in xmlResponse:
             return fault_code(systemErrors[4],4)
-        if -1 in xmlResponse:
+        elif 16 in xmlResponse:
+            return fault_code(systemErrors[16],16)    
+        elif -1 in xmlResponse:
             return fault_code(systemErrors[201],201)
         else:
             logInfo(xmlResponse)
@@ -446,7 +527,7 @@ def fault_code(string,code):
 
 # Register an instance; all the methods of the instance are published as XML-RPC methods (in this case, just 'div').
 class Methods:
-        def show_version(self):
+        def getVersion(self):
             print("show_version() API show.version")
             logInfo("show_version() API show.version")
             return sipLocatorConfig.XML_VERSION
