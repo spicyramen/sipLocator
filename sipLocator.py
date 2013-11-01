@@ -103,6 +103,8 @@ class sipMessage(Object):
             callInfo = self.sipHeaderInfo['Call-ID:']
             #logger.info('getSipCallId() Sip Call-ID: ' + callInfo.get('Call-ID:'))
             return callInfo
+        except KeyError:
+            print 'getSipMsgCallId() No Key: "Call-ID:"'
         except Exception,e:
             print traceback.format_exc()
     
