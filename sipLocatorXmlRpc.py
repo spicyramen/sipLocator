@@ -481,8 +481,8 @@ def processSipXmlParameters(msg,type):
 
             sipCallLatitude = location.latitude
             sipCallLongitude = location.longitude
-            systemLatitude = sipLocatorConfig.XML_GEOLOCATION.get('latitude')
-            systemLongitude = sipLocatorConfig.XML_GEOLOCATION.get('longitude')
+            systemLatitude = sipLocatorConfig.XML_GEO_LOCATION.get('latitude')
+            systemLongitude = sipLocatorConfig.XML_GEO_LOCATION.get('longitude')
 
             if sipCallLongitude!=None and sipCallLatitude!=None:
                 distance = haversineDistance((sipCallLatitude,sipCallLongitude),(systemLatitude,systemLongitude))
@@ -609,7 +609,10 @@ def haversineDistance(location1, location2):
     a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     d = earth * c
-    return d
+    if sipLocatorConfig.XML_GEO_SEARCH_MILES:
+        return d * 0.62137
+    else:
+        return d
 
 def fault_code(string,code):
     xmlResponse = {'faultCode' :code,'faultString':string }
@@ -646,7 +649,6 @@ def main():
     
     try:
         startXmlRpc()
-
     except KeyboardInterrupt:
         logging.info ("sipLocator XML server stopping....")
         try:
