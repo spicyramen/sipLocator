@@ -6,6 +6,9 @@
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast
+from gevent import monkey, Greenlet, GreenletExit
+monkey.patch_socket()
+from gevent.queue import Queue
 from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
@@ -367,28 +370,70 @@ def eth_addr (a) :
   b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]) , ord(a[1]) , ord(a[2]), ord(a[3]), ord(a[4]) , ord(a[5]))
   return b
  
+# Catch all fragmented
+def _sipTcpReceiver(socket,data):
+    #Add the existing data from first check
+    pending = data
+    while True:
+        # Get more info from existing socket
+        data = socket.recv(sipLocatorConfig.NETWORK_MAX_SIZE);
+        if data: 
+            pending += data
+            while True:
+                msg = pending
+                index1, index2 = msg.find('\n\n'), msg.find('\n\r\n')
+                if index2 > 0 and index1 > 0:
+                    if index1 < index2:
+                        index = index1 + 2
+                    else: 
+                        index = index2 + 3
+                elif index1 > 0: 
+                    index = index1 + 2
+                elif index2 > 0:
+                    index = index2 + 3
+                else:
+                    logging.info('no CRLF found'); break # no header part yet    
+                    match = re.search(r'content-length\s*:\s*(\d+)\r?\n', msg.lower())
+                    if not match: logging.info('No content-length found'); break # no content length yet
+                    length = int(match.group(1))
+                    logging.info('Up to index\n%s', msg[:index])
+                    logging.info('Body\n%s', msg[index:index+length])
+                    if len(msg) < index+length: logging.info('Has more content %d < %d (%d+%d)', len(msg), index+length, index, length); break # pending further content.
+                    total, pending = msg[:index+length], msg[index+length:]
+                    return total
+        else:
+            break
+            # else signal a failure
 #@profile 
 def initPacketCapture() : 
     logging.info("-----------------------------------------------Server packet capture started------------------------------------------------")
     print "-----------------------------------------------Server packet capture started------------------------------------------------"
     print
-
+    
+    UDP, TCP, TLS = 'udp', 'tcp', 'tls' # transport values
+    _stack, _gin, _transport, _conn = {}, {}, None, {}
     #create a AF_PACKET type raw socket (thats basically packet level)
-    #define ETH_P_ALL    0x0003          /* Every packet (be careful!!!) */
+    #define ETH_P_ALL   0x0003          /* Every packet (be careful!!!) */
+    #define ETH_P_IP    0x0800          /* Only IP Packets */
+    
+        
     try:
-        s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(0x0003))
+        s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(sipLocatorConfig.NETWORK_FILTER))
+
     except socket.error, msg:
         print 'initPacketCapture() Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
         sys.exit()
 
-    # receive a packet
+    # Receive a packet
+   
     while True:
-        packet = s.recvfrom(65565) 
+
+        packet = s.recvfrom(sipLocatorConfig.NETWORK_MAX_SIZE)
+        logging.info('Received data on type=%r\n%s', s.type, packet)
         #packet string from tuple
         packet = packet[0] 
         #parse ethernet header
         eth_length = 14
-         
         eth_header = packet[:eth_length]
         eth = unpack('!6s6sH' , eth_header)
         eth_protocol = socket.ntohs(eth[2])
@@ -398,32 +443,25 @@ def initPacketCapture() :
         if eth_protocol == 8 :
             #Parse IP header
             #take first 20 characters for the ip header
-            ip_header = packet[eth_length:20+eth_length]
-            
+            ip_header = packet[eth_length:20+eth_length]          
             #now unpack them :)
             iph = unpack('!BBHHHBBH4s4s' , ip_header)
      
             version_ihl = iph[0]
             version = version_ihl >> 4
             ihl = version_ihl & 0xF
-     
             iph_length = ihl * 4
-     
             ttl = iph[5]
             protocol = iph[6]
             s_addr = socket.inet_ntoa(iph[8]);
             d_addr = socket.inet_ntoa(iph[9]);
      
-      
             #TCP protocol
-
             if protocol == 6 :
                 t = iph_length + eth_length
                 tcp_header = packet[t:t+20]
-     
                 #now unpack them :)
                 tcph = unpack('!HHLLBBHHH' , tcp_header)
-                 
                 source_port = tcph[0]
                 dest_port = tcph[1]
                 sequence = tcph[2]
@@ -431,7 +469,8 @@ def initPacketCapture() :
                 doff_reserved = tcph[4]
                 tcph_length = doff_reserved >> 4
 
-                if dest_port == sipLocatorConfig.SIP_PORT:   
+                if dest_port == sipLocatorConfig.SIP_PORT:
+
                     print               
                     logging.info("------------------------------------------------------SIP Packet detected------------------------------------------------------")
                     print "------------------------------------------------------SIP Packet detected------------------------------------------------------"
@@ -444,6 +483,7 @@ def initPacketCapture() :
                     #get data from the packet
                     data = packet[h_size:] 
 
+
                     # Change to Dictionary Data 'protocol','s_addr','source_port','d_addr','dest_port'
                     # member['sipMsgSdpInfo'] = parseSipMsg.getSdpInfo()
                     #ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
@@ -453,7 +493,9 @@ def initPacketCapture() :
                     ipInfo['source_port'] = source_port
                     ipInfo['d_addr'] = str(d_addr)
                     ipInfo['dest_port'] = dest_port
-                    processSipPacket(data,ipInfo)
+                    sipData = _sipTcpReceiver(s,data)
+                    print sipData
+                    processSipPacket(sipData,ipInfo)
      
                 if dest_port == sipLocatorConfig.WS_PORT:   
                     print               
@@ -569,3 +611,4 @@ def main():
         
 if __name__ == '__main__':
     main()        
+
