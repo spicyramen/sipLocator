@@ -6,9 +6,9 @@
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast
-from gevent import monkey, Greenlet, GreenletExit
-monkey.patch_socket()
-from gevent.queue import Queue
+#from gevent import monkey, Greenlet, GreenletExit
+#monkey.patch_socket()
+#from gevent.queue import Queue
 from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
@@ -16,7 +16,6 @@ from struct import *
 
 #import psutil
 #from memory_profiler import profile
-
 
 sys.excepthook = lambda *args: None
 
@@ -349,8 +348,9 @@ def sipCallInsertViaParse(sipCall):
         logging.info("sipCallInsertViaParse() sipCall Record created in Parse CallID: " + sipCall.getSipCallId())            
         print 'sipCallInsertViaParse() sipCall Record created in Parse CallID: ' + sipCall.getSipCallId()
     except Exception,e:
-        logger.error('sipCallInsertViaParse() Error')
+        logging.error('sipCallInsertViaParse() Error')
         print 'sipCallInsertViaParse() Error'
+        print e
 
 #Connects to Parse using parse_rest
 #https://github.com/dgrtwo/ParsePy
@@ -362,8 +362,9 @@ def sipMessageInsertViaParse(sipMsg):
         logging.info("sipMessageInsertViaParse() sipMessage Record created in Parse. " + sipMsg.getSipMsgMethod() + " CallID: " + sipMsg.getSipMsgCallId())
         print 'sipMessageInsertViaParse() sipMessage Record created in Parse. ' + sipMsg.getSipMsgMethod() + ' CallID: ' + sipMsg.getSipMsgCallId()
     except Exception,e:
+        logging.error('sipMessageInsertViaParse() Error')
         print 'sipMessageInsertViaParse() Error'
-
+        print e
 
 #Convert a string of 6 characters of ethernet address into a dash separated hex string
 def eth_addr (a) :
@@ -377,6 +378,7 @@ def _sipTcpReceiver(socket,data):
     while True:
         # Get more info from existing socket
         data = socket.recv(sipLocatorConfig.NETWORK_MAX_SIZE);
+        logging.info('Received data on type=%r\n%s', socket.type, data)
         if data: 
             pending += data
             while True:
@@ -415,7 +417,6 @@ def initPacketCapture() :
     #create a AF_PACKET type raw socket (thats basically packet level)
     #define ETH_P_ALL   0x0003          /* Every packet (be careful!!!) */
     #define ETH_P_IP    0x0800          /* Only IP Packets */
-    
         
     try:
         s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(sipLocatorConfig.NETWORK_FILTER))
@@ -429,7 +430,6 @@ def initPacketCapture() :
     while True:
 
         packet = s.recvfrom(sipLocatorConfig.NETWORK_MAX_SIZE)
-        logging.info('Received data on type=%r\n%s', s.type, packet)
         #packet string from tuple
         packet = packet[0] 
         #parse ethernet header
@@ -472,8 +472,8 @@ def initPacketCapture() :
                 if dest_port == sipLocatorConfig.SIP_PORT:
 
                     print               
-                    logging.info("------------------------------------------------------SIP Packet detected------------------------------------------------------")
-                    print "------------------------------------------------------SIP Packet detected------------------------------------------------------"
+                    logging.info("------------------------------------------------------TCP SIP Packet detected------------------------------------------------------")
+                    print "------------------------------------------------------TCP SIP Packet detected------------------------------------------------------"
                     logging.info('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))                   
                     print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
                     logging.info('Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length))                    
@@ -546,7 +546,6 @@ def initPacketCapture() :
                 u = iph_length + eth_length
                 udph_length = 8
                 udp_header = packet[u:u+8]
-     
                 #now unpack them :)
                 udph = unpack('!HHHH' , udp_header)
                  
@@ -556,8 +555,8 @@ def initPacketCapture() :
                 checksum = udph[3]
                                    
                 if dest_port == sipLocatorConfig.SIP_PORT:
-                    logging.info("-----------------------------------------------SIP Packet detected-----------------------------------------------")
-                    print "-----------------------------------------------SIP Packet detected-----------------------------------------------"
+                    logging.info("-----------------------------------------------UDP SIP Packet detected-----------------------------------------------")
+                    print "-----------------------------------------------UDP SIP Packet detected-----------------------------------------------"
                     logging.info('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))
                     print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
                     logging.info('Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Length : ' + str(length) + ' Checksum : ' + str(checksum))
@@ -579,7 +578,6 @@ def initPacketCapture() :
                     ipInfo['dest_port'] = dest_port
                     processSipPacket(data,ipInfo)
          
-
             #some other IP packet like IGMP
             else :
                 print 'Packet - Protocol other than TCP/UDP/ICMP'
