@@ -5,7 +5,7 @@
         Purpose: Sniffs all incoming and outgoing SIP packets and upload geoLocation information to parse.com
 '''
 import sipLocatorConfig
-import socket,sys,logging,traceback,re,urllib,ast
+import socket,sys,logging,traceback,re,urllib,ast,os
 #from gevent import monkey, Greenlet, GreenletExit
 #monkey.patch_socket()
 #from gevent.queue import Queue
@@ -375,12 +375,13 @@ def eth_addr (a) :
 def _sipTcpReceiver(socket,data):
     #Add the existing data from first check
     pending = data
+    logging.info('Initial SIP data: %s',data)
     while True:
         # Get more info from existing socket
-        data = socket.recv(sipLocatorConfig.NETWORK_MAX_SIZE);
-        logging.info('Received data on type=%r\n%s', socket.type, data)
-        if data: 
-            pending += data
+        packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE);
+        logging.info('Received data on type=%r\n%s', socket.type, packet)
+        if packet: 
+            pending += packet
             while True:
                 msg = pending
                 index1, index2 = msg.find('\n\n'), msg.find('\n\r\n')
@@ -398,7 +399,7 @@ def _sipTcpReceiver(socket,data):
                     match = re.search(r'content-length\s*:\s*(\d+)\r?\n', msg.lower())
                     if not match: logging.info('No content-length found'); break # no content length yet
                     length = int(match.group(1))
-                    logging.info('Up to index\n%s', msg[:index])
+                    logging.info('Up to index \n%s', msg[:index])
                     logging.info('Body\n%s', msg[index:index+length])
                     if len(msg) < index+length: logging.info('Has more content %d < %d (%d+%d)', len(msg), index+length, index, length); break # pending further content.
                     total, pending = msg[:index+length], msg[index+length:]
@@ -585,7 +586,11 @@ def initPacketCapture() :
 # Main function
 #@profile
 def main():
-
+    try:
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
+    except OSError:
+        pass
     logging.basicConfig(filename='logs/sipLocator.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S')   
     logging.info("-----------------------------------------------Initializing sipLocator server-----------------------------------------------")
     print "-----------------------------------------------Initializing sipLocator server-----------------------------------------------"
@@ -609,4 +614,5 @@ def main():
         
 if __name__ == '__main__':
     main()        
+
 
