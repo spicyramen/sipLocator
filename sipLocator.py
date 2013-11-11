@@ -103,7 +103,7 @@ class sipMessage(Object):
     def getSipMsgCallId(self):
         try:
             callInfo = self.sipHeaderInfo['Call-ID:']
-            #logger.info('getSipCallId() Sip Call-ID: ' + callInfo.get('Call-ID:'))
+            #logging.info('getSipCallId() Sip Call-ID: ' + callInfo.get('Call-ID:'))
             return callInfo
         except KeyError:
             print 'getSipMsgCallId() No Key: "Call-ID:"'
@@ -375,7 +375,10 @@ def eth_addr (a) :
 def _sipTcpReceiver(socket,data):
     #Add the existing data from first check
     pending = data
-    logging.info('Initial SIP data: %s', pending)
+    if not pending: logging.debug('Empty sip  message found'); return None # no content length yet
+   
+    logging.info('Initial SIP data: %s',data)
+     
     while True:
         # Get more info from existing socket
         packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE);
@@ -399,14 +402,13 @@ def _sipTcpReceiver(socket,data):
                 else:
                     logging.warn('no CRLF found'); break # no header part yet    
                 
-		match = re.search(r'content-length\s*:\s*(\d+)*', msg.lower())
+		match = re.search(r'content-length\s*:\s*(\d+)\r?\n', msg.lower())
                 if not match: logging.warn('No content-length found'); break # no content length yet
                 length = int(match.group(1))
-                logging.info('Up to index \n%s', msg[:index])
-                logging.info('Body\n%s', msg[index:index+length])
+                logging.info('Sip data Up to index \n%s', msg[:index])
+                logging.info('Sip data Body: \n%s', msg[index:index+length])
                 if len(msg) < index+length: logging.info('Has more content %d < %d (%d+%d)', len(msg), index+length, index, length); break # pending further content.
                 total, pending = msg[:index+length], msg[index+length:]
-   	        logging.info('Finish proccesed TCP fragmented packet %s', total)
                 return total
         else:
             break
@@ -487,8 +489,8 @@ def initPacketCapture() :
                     data_size = len(packet) - h_size
                     #get data from the packet
                     data = packet[h_size:] 
-
-
+	            
+		
                     # Change to Dictionary Data 'protocol','s_addr','source_port','d_addr','dest_port'
                     # member['sipMsgSdpInfo'] = parseSipMsg.getSdpInfo()
                     #ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
@@ -498,9 +500,10 @@ def initPacketCapture() :
                     ipInfo['source_port'] = source_port
                     ipInfo['d_addr'] = str(d_addr)
                     ipInfo['dest_port'] = dest_port
+	            logging.info('_sipTcpReciever()')
                     sipData = _sipTcpReceiver(s,data)
-                    print sipData
-                    processSipPacket(sipData,ipInfo)
+                    if sipData is not None:
+		    	processSipPacket(sipData,ipInfo)
      
                 if dest_port == sipLocatorConfig.WS_PORT:   
                     print               
