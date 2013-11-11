@@ -375,20 +375,19 @@ def eth_addr (a) :
 def _sipTcpReceiver(socket,data):
     #Add the existing data from first check
     pending = data
-    logging.info('Initial SIP data: %s',data)
+    logging.info('Initial SIP data: %s', pending)
     while True:
         # Get more info from existing socket
         packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE);
-        logging.info('Received Sip data on type=%r\n', socket.type)
-        logging.info(packet)
+        #logging.info('Received Sip data on type=%r\n', socket.type)
+        #logging.info('Sip new packet info %s', packet)
         if packet: 
             pending += packet
             while True:
                 msg = pending
                 index1, index2 = msg.find('\n\n'), msg.find('\n\r\n')
-                print index1
-                print index2
-                if index2 > 0 and index1 > 0:
+                #logging.info('Sip msg: %s index1: %d index2: %d', msg,index1,index2)
+		if index2 > 0 and index1 > 0:
                     if index1 < index2:
                         index = index1 + 2
                     else: 
@@ -399,16 +398,16 @@ def _sipTcpReceiver(socket,data):
                     index = index2 + 3
                 else:
                     logging.warn('no CRLF found'); break # no header part yet    
-                    match = re.search(r'content-length\s*:\s*(\d+)\r?\n', msg.lower())
-                    if not match: logging.warn('No content-length found'); break # no content length yet
-                    length = int(match.group(1))
-                    logging.info('Up to index \n%s', msg[:index])
-                    logging.info('Body\n%s', msg[index:index+length])
-                    if len(msg) < index+length: logging.info('Has more content %d < %d (%d+%d)', len(msg), index+length, index, length); break # pending further content.
-                    total, pending = msg[:index+length], msg[index+length:]
-                    logging.info('Finish proccesed TCP fragmented packet')
-                    logging.info(total)
-                    return total
+                
+		match = re.search(r'content-length\s*:\s*(\d+)*', msg.lower())
+                if not match: logging.warn('No content-length found'); break # no content length yet
+                length = int(match.group(1))
+                logging.info('Up to index \n%s', msg[:index])
+                logging.info('Body\n%s', msg[index:index+length])
+                if len(msg) < index+length: logging.info('Has more content %d < %d (%d+%d)', len(msg), index+length, index, length); break # pending further content.
+                total, pending = msg[:index+length], msg[index+length:]
+   	        logging.info('Finish proccesed TCP fragmented packet %s', total)
+                return total
         else:
             break
             # else signal a failure
