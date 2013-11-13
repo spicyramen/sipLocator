@@ -386,17 +386,17 @@ def _sipTcpReceiver(socket,firstSipPacket):
     #Add the existing data from first check
     pending = firstSipPacket
     if not pending:logging.warn('_sipTcpReceiver empty TCP data segment');return None # no content length yet
-    logging.info('_sipTcpReceiver Initial TCP SIP data: <![sipLocator[%s]]>\n',firstSipPacket)
-    segmentPacket=False
+    #logging.info('_sipTcpReceiver Initial TCP SIP data: <![sipLocator[%s]]>\n',firstSipPacket)
     fragmentNumber = 1
     while True:
         # Get more info from existing socket
         fragmentNumber = fragmentNumber + 1
         try: 
             #Obtain next TCP fragment
+            
             packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE)
-            logging.info('_sipTcpReceiver segmented data: <![sipLocator[%s]]>\n',packet)
-
+            #logging.info('_sipTcpReceiver Segmented TCP data data: <![sipLocator[%s]]>\n',packet)
+            
             #Removing Eth, IP and TCP header info    
             #Parse ethernet header
             eth_length = 14
@@ -424,7 +424,7 @@ def _sipTcpReceiver(socket,firstSipPacket):
             data_size = len(packet) - h_size
             #get data from the packet
             data = packet[h_size:]
-            logging.info('_sipTcpReceiver extracted fragment number (%d). TCP data  <![sipLocator[%s]]>\n',fragmentNumber,data)
+            #logging.info('_sipTcpReceiver extracted fragment number (%d). Extracted TCP data  <![sipLocator[%s]]>',fragmentNumber,data)
 
             if pending:
                 logging.info('_sipTcpReceiver length (%d)',len(data))
@@ -452,7 +452,7 @@ def _sipTcpReceiver(socket,firstSipPacket):
                     if len(msg) < index+length: logging.info('_sipTcpReceiver Sip TCP Message has more content: %d < %d (%d+%d)', len(msg), index+length, index, length); break # pending further content.
                     total, pending = msg[:index+length], msg[index+length:]
                     #logging.info('_sipTcpReceiver pending data <![sipLocator[%s]]>\n', pending)
-                    logging.info('_sipTcpReceiver final sip Packet <![sipLocator[%s%s]]>\n', total,pending)
+                    #logging.info('_sipTcpReceiver final sip Packet <![sipLocator[%s%s]]>\n', total,pending)
                     segmentPacket=True
                     return total+pending
             else:
@@ -546,11 +546,12 @@ def initPacketCapture() :
                     ipInfo['dest_port'] = dest_port
                     
                     logging.info('initPacketCapture() SIP TCP packet data detected')
+                    print 'initPacketCapture() SIP TCP packet data detected'
                     sipData = _sipTcpReceiver(s,data)
                     if sipData is not None:
                         print               
-                        logging.info("------------------------------------------------------Stack detected SIP TCP data------------------------------------------------------")
-                        print "------------------------------------------------------Stack detected TCP SIP data------------------------------------------------------"
+                        logging.info("------------------------------------------------------Stack processed SIP TCP data------------------------------------------------------")
+                        print "------------------------------------------------------Stack processed TCP SIP data------------------------------------------------------"
                         logging.info('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))                   
                         print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
                         logging.info('Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length))                    
