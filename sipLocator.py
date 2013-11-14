@@ -80,11 +80,12 @@ class sipMessage(Object):
         #print header + ' ' + value
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
     
-    def addSdpInfo(self,sdpKey,sdpValue):      
-        self.sipMsgSdpInfo.update({sdpKey: sdpValue})
+    def addSdpInfo(self,sdpLineNumber,sdpKey,sdpValue):      
+        #self.sipMsgSdpInfo.update({sdpKey: sdpValue})
+        #self.sipMsgSdpInfo.append(sdpKey + '=' + sdpValue)
+        sdpLine = sdpKey + '=' + sdpValue
+        self.sipMsgSdpInfo.update({sdpLineNumber: sdpLine})
         logging.info(sdpKey + '=' + sdpValue)
-        #print sdpKey + '=' + sdpValue
-        #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
 
     def getSipHeaders(self):
         return self.sipHeaderInfo
@@ -171,20 +172,20 @@ def processSipPacket(sipMsg,ipInfo):
     # Create sipMessage Object for each SIP Packet received
     newSipMessage = sipMessage()
     newSipMessage.setSipMsgIpInfo(ipInfo)
-
+    sdpLine = 1
     try:
         for sipLine in sipData:
             #print 'processSipPacket() sipLine: ' + sipLine
             Message = re.search(r'(\w+\s+sip:.*)|(^SIP/2.0\s.*)', sipLine)
             Header  = re.search(r'(^\w+:) (.*)|([A-Za-z]+-[A-Za-z]+:) (.*)', sipLine)
-            SDP     = re.search(r'(^[A-Za-z])=(.*)', sipLine)
+            SDP     = re.search(r'(^[A-Za-z]){1}=(.*)', sipLine)
             if Message:
                 # Find Method Name or SIP Response
                 message = Message.group(0)
                 newSipMessage.setSipMessage(message)
                 logging.info("processSipPacket() SIP Method: " + newSipMessage.getSipMsgMethod())
                 #print 'processSipPacket() SIP Method: ' + newSipMessage.getSipMsgMethod()
-                Message = None
+                Message = None #Update to None
             if Header:
                 # Matches Header no hyphen, (Example: Contact)   
                 headerKey   = Header.group(1)
@@ -195,12 +196,13 @@ def processSipPacket(sipMsg,ipInfo):
                     headerValue = Header.group(4) 
                 # Add Values to Object          
                 newSipMessage.addSipHeader(headerKey,headerValue)   
-                Header = None
+                Header = None #Update to None
             if SDP:
                 sdpKey = SDP.group(1)
                 sdpValue = SDP.group(2)
-                newSipMessage.addSdpInfo(sdpKey,sdpValue)
-                SDP = None
+                newSipMessage.addSdpInfo(sdpLine,sdpKey,sdpValue)
+                sdpLine = sdpLine + 1
+                SDP = None #Update to None
 
         # Process sipHeaders
         #newSipMessage.getSipHeaders()
@@ -225,7 +227,6 @@ def ccEngine(sipMsg):
     sipMsg.processSipMsgCallId()
     # Insert Local Array
     sipMessagesList.append(sipMsg)
-    
     # Store SIP Message in Parse
     # Create a New Thread
     try:
@@ -374,8 +375,6 @@ def eth_addr (a) :
   b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]) , ord(a[1]) , ord(a[2]), ord(a[3]), ord(a[4]) , ord(a[5]))
   return b
 
-
-
 def printHex(data):
     hex = binascii.hexlify(data)
     formatted_hex = ':'.join(hex[i:i+2] for i in range(0, len(hex), 2))
@@ -392,8 +391,8 @@ def _sipTcpReceiver(socket,firstSipPacket):
         # Get more info from existing socket
         fragmentNumber = fragmentNumber + 1
         try: 
-            #Obtain next TCP fragment
             
+            #Obtain next TCP fragment    
             packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE)
             #logging.info('_sipTcpReceiver Segmented TCP data data: <![sipLocator[%s]]>\n',packet)
             
@@ -453,11 +452,9 @@ def _sipTcpReceiver(socket,firstSipPacket):
                     total, pending = msg[:index+length], msg[index+length:]
                     #logging.info('_sipTcpReceiver pending data <![sipLocator[%s]]>\n', pending)
                     #logging.info('_sipTcpReceiver final sip Packet <![sipLocator[%s%s]]>\n', total,pending)
-                    segmentPacket=True
                     return total+pending
             else:
                 #logging.warn('_sipTcpReceiver Empty packet')
-                segmentPacket=True
                 break
                 # else signal a failure
 

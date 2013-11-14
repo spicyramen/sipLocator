@@ -117,11 +117,12 @@ class sipMessage(Object):
         #print header + ' ' + value
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
     
-    def addSdpInfo(self,sdpKey,sdpValue):      
-        self.sipMsgSdpInfo.update({sdpKey: sdpValue})
+    def addSdpInfo(self,sdpLineNumber,sdpKey,sdpValue):      
+        #self.sipMsgSdpInfo.update({sdpKey: sdpValue})
+        #self.sipMsgSdpInfo.append(sdpKey + '=' + sdpValue)
+        sdpLine = sdpKey + '=' + sdpValue
+        self.sipMsgSdpInfo.update({sdpLineNumber: sdpLine})
         logging.info(sdpKey + '=' + sdpValue)
-        #print sdpKey + '=' + sdpValue
-        #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
 
     def getSipHeaders(self):
         return self.sipHeaderInfo
