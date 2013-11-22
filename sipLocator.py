@@ -6,14 +6,14 @@
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast,os,binascii
-#from gevent import monkey, Greenlet, GreenletExit
-#monkey.patch_socket()
-#from gevent.queue import Queue
 from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
 from time import sleep
 from struct import *
+#from gevent import monkey, Greenlet, GreenletExit
+#monkey.patch_socket()
+#from gevent.queue import Queue
 
 #import psutil
 #from memory_profiler import profile
@@ -67,6 +67,7 @@ class sipMessage(Object):
         self.hasSDP           = False
         self.sipMsgMethodInfo = ''
         self.sipMsgCallId     = ''
+        self.size             = 0
     
     def setSipMessage(self,msg):
         self.sipMsgMethodInfo = msg
@@ -204,11 +205,6 @@ def processSipPacket(sipMsg,ipInfo):
                 sdpLine = sdpLine + 1
                 SDP = None #Update to None
 
-        # Process sipHeaders
-        #newSipMessage.getSipHeaders()
-        # Process sip SDP info
-        #newSipMessage.getSdpInfo()
-        # Process SIP Message                 
         ccEngine(newSipMessage)
         del newSipMessage
 

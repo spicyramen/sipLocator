@@ -8,7 +8,22 @@ Install:
 
 1) apt-get install python-pip
 2) pip install git+https://github.com/dgrtwo/ParsePy.git
-3) creare logs/ directory
+3) Edit sipLocatorConfig.py
+	
+	XML_GEO_LOCATION
+	XML_GEO_SEARCH_ENABLED
+
 4) Run python sipLocator.py
+
+XML server
+----------------------------
+1) Edit sipLocatorConfig.py
+	
+	XML_HOSTNAME
+	XML_PORT
+	XML_USERNAME
+	XML_PASSWORD
+
+2) Run python sipLocatorXmlRpc.py
 
 TODO: WebSockets support
