@@ -25,6 +25,33 @@ register(sipLocatorConfig.APPLICATION_ID, sipLocatorConfig.REST_API_KEY)
 sipCallList = []
 sipMessagesList = []
 
+class sipClf(Object):
+"""Create a SIP CLF Object"""
+    def __init__(self):
+        logging.info("sipClf() New sipClf object created()")
+        print 'sipClf() New sipClf object created()'
+        # SIP CLF RFC 6872 http://tools.ietf.org/html/rfc6872#section-9
+        self.timeStamp = ''         # Epoch time
+        self.msgType = ''           # R: Request, r: response
+        self.directionality = ''    # s: message sent, r: message received
+        self.transport = ''         # tcp, udp, tls
+        self.srcAddress = ''        # ip address source
+        self.srcPort = ''           # port
+        self.dstAddress = ''        # ip address destination
+        self.dstPort = ''           # port
+        self.fromUri = ''           # The From URI.  For the sake of brevity, URI parameters should not be logged
+        self.fromTag = ''           # The tag parameter of the From header
+        self.toUri = ''             # The To URI. For the sake of brevity, URI parameters should not be logged
+        self.toTag = ''             # The tag parameter of the To header
+        self.callId = ''            # Call Id
+        self.csqMethod = ''         # Cseq: 
+        self.csqNumber = ''         # Cseq:
+        self.reqUri = ''            # SIP URI
+        self.status = ''            # SIP status code if available
+        self.serverTxn = ''         # Optional
+        self.clientTxn = ''         # Optional
+
+
 class sipCall(Object):
 
     """Create a SIP Call Object"""
@@ -136,6 +163,9 @@ class sipMessage(Object):
         except Exception,e:
             print traceback.format_exc()
             print 'processSipMsgSdp() Error'
+
+# Process SIP Message and create SIP CLF object
+def processSipClfMessage(sipMessage):
 
 
 #Obtain geoLocation
