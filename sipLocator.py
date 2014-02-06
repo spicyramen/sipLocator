@@ -26,7 +26,8 @@ sipCallList = []
 sipMessagesList = []
 
 class sipClf(Object):
-"""Create a SIP CLF Object"""
+
+    """Create a SIP CLF Object"""
     def __init__(self):
         logging.info("sipClf() New sipClf object created()")
         print 'sipClf() New sipClf object created()'
@@ -166,7 +167,8 @@ class sipMessage(Object):
 
 # Process SIP Message and create SIP CLF object
 def processSipClfMessage(sipMessage):
-
+    """Process SipClf Message"""
+    print 'extracting SipClf parameters'
 
 #Obtain geoLocation
 def processGeoLocation(srcIP):
