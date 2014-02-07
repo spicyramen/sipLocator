@@ -108,7 +108,7 @@ class sipMessage(Object):
         logging.info(header + ' ' + value)
         #print header + ' ' + value
         #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
-    
+
     def addSdpInfo(self,sdpLineNumber,sdpKey,sdpValue):      
         #self.sipMsgSdpInfo.update({sdpKey: sdpValue})
         #self.sipMsgSdpInfo.append(sdpKey + '=' + sdpValue)
@@ -172,19 +172,20 @@ def processSipClfMessage(sipMessage):
 
 #Obtain geoLocation
 def processGeoLocation(srcIP):
+        logging.info("Processing GeoLocation for: " + srcIP)
         try:
             if srcIP!="":
                 response = urllib.urlopen('http://freegeoip.net/json/' + srcIP ).read()
                 geoLocationInfo = response.splitlines()
                 # Obtain Dictionary
                 finalGeoLocationPoint  = ast.literal_eval(geoLocationInfo[0])
-                print finalGeoLocationPoint
+                logging.info(finalGeoLocationPoint)
                 return finalGeoLocationPoint
             else:
-                print 'processGeoLocation() Error'
+                logging.error('processGeoLocation() Error')
         except Exception,e:
             print traceback.format_exc()
-            print 'processGeoLocation() Exception'
+            logging.error('processGeoLocation() Exception')
 
 
 # Process WS Packet from Wire
@@ -205,6 +206,7 @@ def processSipPacket(sipMsg,ipInfo):
     # Create sipMessage Object for each SIP Packet received
     newSipMessage = sipMessage()
     newSipMessage.setSipMsgIpInfo(ipInfo)
+    #Index SDP Values
     sdpLine = 1
     try:
         for sipLine in sipData:
@@ -243,6 +245,44 @@ def processSipPacket(sipMsg,ipInfo):
     except Exception,e:
         logging.error("processSipPacket() Exception found " + str(e))    
 
+# validIpAddress
+# Verifies if its a Valid IP address
+
+def validIpAddress(address):
+    try: 
+        socket.inet_aton(address)
+        return True
+    except:
+        return False
+
+# ccProcessSipInformation
+# Returns real IP address
+def ccProcessSipInformation(sipMsg):
+    # Process SIP Message IP Address Information
+    try:
+        sipMsgIpInfo = sipMsg.getSipMsgIpInfo()
+        sipHeaderInfo  = sipMsg.getSipHeaders()
+        logging.info("ccProcessSipInformation() Source IP Address: " + sipMsgIpInfo.get('s_addr'))
+        if sipLocatorConfig.SIP_PROXY_HOSTNAME != None:
+            logging.info("sipLocatorConfig.SIP_PROXY_HOSTNAME is configured. Verifying Proxy address: " + sipLocatorConfig.SIP_PROXY_HOSTNAME)
+
+        if sipLocatorConfig.SIP_PROXY_HOSTNAME == sipMsgIpInfo.get('s_addr'):
+            logging.info("Using SIP_PROXY_HOSTNAME: " + sipLocatorConfig.SIP_PROXY_HOSTNAME + " looking for real IP Address...")
+            sipTagRegex = r".*;" + re.escape(sipLocatorConfig.SIP_PROXY_TAG) + r"=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3});.*"
+            Message = re.search(sipTagRegex, sipHeaderInfo.get("Contact:"))
+            if validIpAddress(Message.group(1)):
+                logging.info("SIP Message Source IP Address: " + Message.group(1))
+                return Message.group(1)
+            else:
+                #Add Code to support other SIP Headers
+                logging.error("SIP Message Source IP Address Not Found in Headers")
+                return sipMsgIpInfo.get('s_addr')   
+        else:
+            return sipMsgIpInfo.get('s_addr')       
+    except Exception,e:
+        logging.error('Exception - Unable to get IP address src - ' + str(e))
+        return "0.0.0.0"
+
 
 # CcEngine
 # Verifies if its a new call and contacts SIP Parse to upload info
@@ -273,6 +313,7 @@ def ccEngine(sipMsg):
         print 'Total sipLocator calls: ' + str(len(sipCallList))
         logging.info("ccEngine() INVITE Message detected")
         print 'ccEngine() INVITE Message detected: ' + sipMessage
+        # First call in system
         if len(sipCallList) == 0:
             newSipCall = sipCall()
             newSipCall.setCallId(sipCallID)
@@ -280,19 +321,17 @@ def ccEngine(sipMsg):
             #print 'ccEngine() Initializing List of Calls. New Call created. Call-ID: ' + newSipCall.getSipCallId()
             # Process GeoLocation
             sipCallList.append(sipCallID)
-           
             # Multi-threading
             # Process Call GeoLocation
-            sipMsgIpInfo = sipMsg.getSipMsgIpInfo()
-            
+            sipSrcIpAddress = ccProcessSipInformation(sipMsg)
             try:
-                thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipMsgIpInfo.get('s_addr')), ))
+                thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipSrcIpAddress), ))
                 thread.start()
                 thread.join()
                 #print 'ccEngine() setSipCallGeolocation()'
             except Exception,e:
                 print traceback.format_exc()
-                print 'setSipCallGeolocation() Error'
+                logging.error('setSipCallGeolocation() Error')
 
            # Process Call GeoPoint
             try:
@@ -303,11 +342,11 @@ def ccEngine(sipMsg):
                     geoLocationPoint.append(geoLocationInfo['longitude'])
                     newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
                 else:
-                    print 'processGeoLocationPoint() Error. Empty GeoLocation info'
+                    logging.error('processGeoLocationPoint() Error. Empty GeoLocation info')
                     newSipCall.setSipCallGeoPoint(-1,-1)  
             except Exception,e:
                 print traceback.format_exc()
-                print 'processGeoLocationPoint() Error'
+                logging.error('processGeoLocationPoint() Error')
 
 
             try:
@@ -326,18 +365,16 @@ def ccEngine(sipMsg):
                 #print 'ccEngine() New Call created. Call-ID: ' + sipCallID
                 newSipCall = sipCall()
                 newSipCall.setCallId(sipCallID)
-
                 # Process Call GeoLocation
-                sipMsgIpInfo = sipMsg.getSipMsgIpInfo()
-
+                sipSrcIpAddress = ccProcessSipInformation(sipMsg)
                 try:
-                    thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipMsgIpInfo.get('s_addr')), ))
+                    thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipSrcIpAddress), ))
                     thread.start()
                     thread.join()
                     logging.info('ccEngine() setSipCallGeolocation()')
                 except Exception,e:
                     print traceback.format_exc()
-                    print 'ccEngine() setSipCallGeolocation() Error'
+                    logging.error('ccEngine() setSipCallGeolocation() Error')
 
                 # Process Call GeoPoint
                 try:
@@ -352,7 +389,7 @@ def ccEngine(sipMsg):
                         newSipCall.setSipCallGeoPoint(-1,-1)  
                 except Exception,e:
                     print traceback.format_exc()
-                    print 'processGeoLocationPoint() Error'
+                    logging.error('processGeoLocationPoint() Error')
 
 
                 sipCallList.append(sipCallID)
