@@ -261,22 +261,32 @@ def ccProcessSipInformation(sipMsg):
     # Process SIP Message IP Address Information
     try:
         sipMsgIpInfo = sipMsg.getSipMsgIpInfo()
-        sipHeaderInfo  = sipMsg.getSipHeaders()
         logging.info("ccProcessSipInformation() Source IP Address: " + sipMsgIpInfo.get('s_addr'))
+        
         if sipLocatorConfig.SIP_PROXY_HOSTNAME != None:
-            logging.info("sipLocatorConfig.SIP_PROXY_HOSTNAME is configured. Verifying Proxy address: " + sipLocatorConfig.SIP_PROXY_HOSTNAME)
+            logging.info("sipLocatorConfig.SIP_PROXY_HOSTNAME is configured. Verifying Proxy address(es): " + ','.join(sipLocatorConfig.SIP_PROXY_HOSTNAME))
 
-        if sipLocatorConfig.SIP_PROXY_HOSTNAME == sipMsgIpInfo.get('s_addr'):
-            logging.info("Using SIP_PROXY_HOSTNAME: " + sipLocatorConfig.SIP_PROXY_HOSTNAME + " looking for real IP Address...")
+        if sipMsgIpInfo.get('s_addr') in sipLocatorConfig.SIP_PROXY_HOSTNAME:
+            logging.info("Using SIP_PROXY_HOSTNAME: " + sipMsgIpInfo.get('s_addr') + " looking for real IP Address...")
             sipTagRegex = r".*;" + re.escape(sipLocatorConfig.SIP_PROXY_TAG) + r"=(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3});.*"
-            Message = re.search(sipTagRegex, sipHeaderInfo.get("Contact:"))
+            Message = re.search(sipTagRegex, sipMsg.getSipHeaders().get("Contact:"))
             if validIpAddress(Message.group(1)):
                 logging.info("SIP Message Source IP Address: " + Message.group(1))
                 return Message.group(1)
             else:
                 #Add Code to support other SIP Headers
                 logging.error("SIP Message Source IP Address Not Found in Headers")
-                return sipMsgIpInfo.get('s_addr')   
+                return sipMsgIpInfo.get('s_addr')
+        # Convert PRIVATE to OUTSIDE IP Address        
+        elif sipMsgIpInfo.get('s_addr') == sipLocatorConfig.SIP_PRIVATE_HOSTNAME:
+            logging.info("Using SIP_PRIVATE_HOSTNAME: " + sipMsgIpInfo.get('s_addr') + " converting to public IP address: " + sipLocatorConfig.SIP_PUBLIC_HOSTNAME)
+            if validIpAddress(sipLocatorConfig.SIP_PUBLIC_HOSTNAME):
+                logging.info("SIP Message Source IP Address: " + sipLocatorConfig.SIP_PUBLIC_HOSTNAME)
+                return sipLocatorConfig.SIP_PUBLIC_HOSTNAME
+            else:
+                #Add Code to support other SIP Headers
+                logging.error("SIP Message Invalid value in parameter SIP_PUBLIC_HOSTNAME" + sipLocatorConfig.SIP_PUBLIC_HOSTNAME)
+                return sipMsgIpInfo.get('s_addr')  
         else:
             return sipMsgIpInfo.get('s_addr')       
     except Exception,e:
