@@ -6,6 +6,7 @@
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast,os,binascii
+from twilio.rest import TwilioRestClient
 from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
@@ -245,6 +246,19 @@ def processSipPacket(sipMsg,ipInfo):
     except Exception,e:
         logging.error("processSipPacket() Exception found " + str(e))    
 
+
+def notifyViaSms(textMessage):
+    # Your Account Sid and Auth Token from twilio.com/user/account
+    try:
+        client = TwilioRestClient(sipLocatorConfig.TWILIO_ACCOUNT_SID, sipLocatorConfig.TWILIO_AUTH_TOKEN)
+        message = client.sms.messages.create(body=textMessage,
+        to="+1408-218-6575",    # Replace with your phone number
+        from_="+1415-795-2944") # Replace with your Twilio number
+        print message.sid + " SMS Sent successfully!"
+        logging.info(message.sid)
+    except Exception,e:
+        logging.error("Unable to send SMS message") 
+
 # validIpAddress
 # Verifies if its a Valid IP address
 
@@ -367,6 +381,15 @@ def ccEngine(sipMsg):
             except Exception,e:
                 print traceback.format_exc()
 
+            
+            if sipLocatorConfig.ENABLE_SMS_NOTIFICATIONS:
+                try:
+                    thread = Thread(target=notifyViaSms,args = ("New call has been processed From:  " + sipMsg.getSipHeaders().get("To:"), ))
+                    thread.start()
+                    thread.join()
+                    print 'ccEngine() notifyViaSms()'
+                except Exception,e:
+                    print traceback.format_exc()
         else:
             # Check each call Object and verify Call-ID does not exist. If does not exist, insert new call, otherwise is a SIP Re-Invite
             print 'Total sipLocator calls: ' + str(len(sipCallList))
@@ -411,6 +434,18 @@ def ccEngine(sipMsg):
                 except Exception,e:
                     print traceback.format_exc()
                     print 'ccEngine() sipCallInsertViaParse() Error'
+
+                
+                if sipLocatorConfig.ENABLE_SMS_NOTIFICATIONS:
+                    try:
+                        thread = Thread(target=notifyViaSms,args = ("New call has been processed From:  " + sipMsg.getSipHeaders().get("To:"), ))
+                        thread.start()
+                        thread.join()
+                        print 'ccEngine() notifyViaSms()'
+                    except Exception,e:
+                        print traceback.format_exc()
+                 
+
             else:
                 logging.info('ccEngine() Re-Invite detected()')
                 print 'ccEngine() Re-Invite detected()'    

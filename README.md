@@ -8,12 +8,19 @@ Install:
 
 1) apt-get install python-pip
 2) pip install git+https://github.com/dgrtwo/ParsePy.git
-3) Edit sipLocatorConfig.py
+
+If you want to receive SMS Notifications install twilio library
+
+3) pip install twilio
+	a)  Change sipLocatorConfig to:
+		ENABLE_SMS_NOTIFICATIONS = True
+
+4) Edit sipLocatorConfig.py
 	
 	XML_GEO_LOCATION
 	XML_GEO_SEARCH_ENABLED
 
-4) Run python sipLocator.py
+5) Run python sipLocator.py
 
 XML server
 ----------------------------
