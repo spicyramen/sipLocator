@@ -3,6 +3,8 @@
         AT&T Labs 
         Date: September 2013
         Purpose: Sniffs all incoming and outgoing SIP packets and upload geoLocation information to parse.com
+        Version 1.1 Add SIP CLF support
+
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast,os,binascii
@@ -12,6 +14,9 @@ from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
 from time import sleep
 from struct import *
+
+
+
 #from gevent import monkey, Greenlet, GreenletExit
 #monkey.patch_socket()
 #from gevent.queue import Queue
@@ -164,6 +169,7 @@ class sipMessage(Object):
             pass    
         except Exception,e:
             print traceback.format_exc()
+            logging.error("Unable to process processSipMsgSdp()")
             print 'processSipMsgSdp() Error'
 
 # Process SIP Message and create SIP CLF object
@@ -199,8 +205,8 @@ def processWsPacket(wsMsg,ipInfo):
 # Process SIP Packet from Wire
 #@profile
 def processSipPacket(sipMsg,ipInfo):
-    logging.info("------------------------------------------------------Processing SIP message------------------------------------------------------")
-    print "------------------------------------------------------Processing SIP message------------------------------------------------------"
+    logging.info("------------------------------------------------------App Processing SIP message------------------------------------------------------")
+    print "------------------------------------------------------App Processing SIP message------------------------------------------------------"
     #ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
     #Remove Lines
     sipData = sipMsg.split('\r\n')
@@ -326,6 +332,7 @@ def ccEngine(sipMsg):
         thread.start()
         thread.join()
     except Exception,e:
+        logging.error("ccEngine Exception calling sipMessageInsertViaParse()" + str(e))
         print traceback.format_exc()
         print 'sipMessageInsertViaParse() Error'
 
@@ -355,7 +362,7 @@ def ccEngine(sipMsg):
                 #print 'ccEngine() setSipCallGeolocation()'
             except Exception,e:
                 print traceback.format_exc()
-                logging.error('setSipCallGeolocation() Error')
+                logging.error("ccEngine Exception calling setSipCallGeolocation()" + str(e))
 
            # Process Call GeoPoint
             try:
@@ -370,7 +377,7 @@ def ccEngine(sipMsg):
                     newSipCall.setSipCallGeoPoint(-1,-1)  
             except Exception,e:
                 print traceback.format_exc()
-                logging.error('processGeoLocationPoint() Error')
+                logging.error("ccEngine Exception calling processGeoLocationPoint()" + str(e))
 
 
             try:
@@ -380,6 +387,8 @@ def ccEngine(sipMsg):
                 print 'ccEngine() sipCallInsertViaParse()'
             except Exception,e:
                 print traceback.format_exc()
+                logging.error("ccEngine Exception calling sipCallInsertViaParse()" + str(e))
+
 
             
             if sipLocatorConfig.ENABLE_SMS_NOTIFICATIONS:
@@ -460,8 +469,8 @@ def sipCallInsertViaParse(sipCall):
         logging.info("sipCallInsertViaParse() sipCall Record created in Parse CallID: " + sipCall.getSipCallId())            
         print 'sipCallInsertViaParse() sipCall Record created in Parse CallID: ' + sipCall.getSipCallId()
     except Exception,e:
-        logging.error('sipCallInsertViaParse() Error')
-        print 'sipCallInsertViaParse() Error'
+        logging.error('sipCallInsertViaParse() Exception: ' + str(e))
+        print 'sipCallInsertViaParse() Exception'
         print e
 
 #Connects to Parse using parse_rest
@@ -474,8 +483,8 @@ def sipMessageInsertViaParse(sipMsg):
         logging.info("sipMessageInsertViaParse() sipMessage Record created in Parse. " + sipMsg.getSipMsgMethod() + " CallID: " + sipMsg.getSipMsgCallId())
         print 'sipMessageInsertViaParse() sipMessage Record created in Parse. ' + sipMsg.getSipMsgMethod() + ' CallID: ' + sipMsg.getSipMsgCallId()
     except Exception,e:
-        logging.error('sipMessageInsertViaParse() Error')
-        print 'sipMessageInsertViaParse() Error'
+        logging.error('sipMessageInsertViaParse() Exception: ' + str(e))
+        print 'sipMessageInsertViaParse() Exception'
         print e
 
 
@@ -494,19 +503,17 @@ def printHex(data):
 def _sipTcpReceiver(socket,firstSipPacket):
     #Add the existing data from first check
     pending = firstSipPacket
-    if not pending:logging.warn('_sipTcpReceiver empty TCP data segment');return None # no content length yet
-    #logging.info('_sipTcpReceiver Initial TCP SIP data: <![sipLocator[%s]]>\n',firstSipPacket)
+    if not pending:logging.warn('_sipTcpReceiver empty App data segment');return None # No Content length yet
     fragmentNumber = 1
+    logging.info('-----------------------------------------------_sipTcpReceiver()------------------------------------------------')
+    logging.info('_sipTcpReceiver() fragment (%d). Initial App data: <![sipLocator[%s]]>\n',fragmentNumber,firstSipPacket)
     while True:
         # Get more info from existing socket
-        fragmentNumber = fragmentNumber + 1
-        try: 
-            
-            #Obtain next TCP fragment    
-            packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE)
-            #logging.info('_sipTcpReceiver Segmented TCP data data: <![sipLocator[%s]]>\n',packet)
-            
-            #Removing Eth, IP and TCP header info    
+        #fragmentNumber = fragmentNumber + 1
+        try:
+            # Obtain next TCP fragment
+            # Ethernet 14 byte, IP 20 bytes, TCP 32 bytes ~ 66 bytes
+            packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE) 
             #Parse ethernet header
             eth_length = 14
             ip_header = packet[eth_length:20+eth_length]          
@@ -518,25 +525,30 @@ def _sipTcpReceiver(socket,firstSipPacket):
             iph_length = ihl * 4
             t = iph_length + eth_length
 
-            # Bug: Tcp header can be variable >= 20
+            # Bug: Ip header can be variable >= 20
             tcp_header = packet[t:t+20]
             #now unpack them 
-            tcph = unpack('!HHLLBBHHH' , tcp_header)
+            tcph = unpack('!HHLLBBHHH',tcp_header)
             source_port = tcph[0]
             dest_port = tcph[1]
             sequence = tcph[2]
             acknowledgement = tcph[3]
             doff_reserved = tcph[4]
             tcph_length = doff_reserved >> 4
-                
             h_size = eth_length + iph_length + tcph_length * 4
             data_size = len(packet) - h_size
             #get data from the packet
             data = packet[h_size:]
-            #logging.info('_sipTcpReceiver extracted fragment number (%d). Extracted TCP data  <![sipLocator[%s]]>',fragmentNumber,data)
+            #logging.info('_sipTcpReceiver extracted fragment number (%d). Extracted App data  <![sipLocator[%s]]>',fragmentNumber,data)
+            # Pending is True as initial data exists
+
+            if h_size <= 66 and len(data) == 0: 
+                logging.warn('_sipTcpReceiver() no App content (Possible a TCP Acknowledgement) - Header size: (%d)',h_size)
+                continue;
 
             if pending:
-                #logging.info('_sipTcpReceiver length (%d)',len(data))
+                logging.info('_sipTcpReceiver() fragment (%d). Length (%d) - Header size: (%d)',fragmentNumber,len(data),h_size)
+                logging.info('_sipTcpReceiver() App data extracted: ' + data + '\n')
                 pending += data
                 while True:
                     msg = pending
@@ -551,27 +563,27 @@ def _sipTcpReceiver(socket,firstSipPacket):
                     elif index2 > 0:
                         index = index2 + 3
                     else:
-                        logging.warn('_sipTcpReceiver no CRLF found'); break # no header part yet
+                        logging.warn('_sipTcpReceiver() no CRLF found'); break # No header part yet
                     
                     match = re.search(r'content-length\s*:\s*(\d+)\r?\n', msg.lower())
                     if not match: logging.warn('No Content-Length found'); break # no content length yet
                     length = int(match.group(1))
                     #logging.info('_sipTcpReceiver Sip data Up to index <![sipLocator[%s]]>\n', msg[:index+length])
-                    #logging.info('_sipTcpReceiver Index: %d Length: %d Sip data Body <![sipLocator[%s]]>\n\n', index, index+length, msg[index:index+length])
-                    if len(msg) < index+length: logging.info('_sipTcpReceiver Sip TCP Message has more content: %d < %d (%d+%d)', len(msg), index+length, index, length); break # pending further content.
+                    logging.info('_sipTcpReceiver Index: %d Length: %d Sip data Body <![sipLocator[%s]]>\n\n', index, index+length, msg[index:index+length])
+                    if len(msg) < index + length: logging.info('_sipTcpReceiver fragment (%d). App Message has more content: %d < %d (%d+%d)', fragmentNumber, len(msg), index+length, index, length);break # pending further content.
                     total, pending = msg[:index+length], msg[index+length:]
-                    #logging.info('_sipTcpReceiver pending data <![sipLocator[%s]]>\n', pending)
-                    #logging.info('_sipTcpReceiver final sip Packet <![sipLocator[%s%s]]>\n', total,pending)
+                    #logging.info('_sipTcpReceiver pending App data <![sipLocator[%s]]>\n', pending)
+                    logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![sipLocator[%s%s]]>\n', fragmentNumber, total,pending)
                     return total+pending
             else:
-                #logging.warn('_sipTcpReceiver Empty packet')
+                logging.warn('_sipTcpReceiver() Empty packet')
                 break
                 # else signal a failure
 
         except Exception,e:
             # Something else happened, handle error, exit, etc.
+            logging.error('_sipTcpReceiver Exception processing TCP fragmentation') 
             print e
-            logging.error(e)
             sys.exit(1)
 
 #@profile 
@@ -583,7 +595,6 @@ def initPacketCapture() :
     #create a AF_PACKET type raw socket (thats basically packet level)
     #define ETH_P_ALL   0x0003          /* Every packet (be careful!!!) */
     #define ETH_P_IP    0x0800          /* Only IP Packets */
-        
     try:
         s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(sipLocatorConfig.NETWORK_FILTER))
 
@@ -655,7 +666,8 @@ def initPacketCapture() :
                     
                     logging.info('initPacketCapture() SIP TCP packet data detected')
                     print 'initPacketCapture() SIP TCP packet data detected'
-                    sipData = _sipTcpReceiver(s,data)
+                    sipData = _sipTcpReceiver(s,data)                  
+
                     if sipData is not None:
                         print               
                         logging.info("------------------------------------------------------Stack processed SIP TCP data------------------------------------------------------")
@@ -678,7 +690,7 @@ def initPacketCapture() :
                     ipInfo['source_port'] = source_port
                     ipInfo['d_addr'] = str(d_addr)
                     ipInfo['dest_port'] = dest_port
-          
+                    # TODO Process WS
 
             #ICMP Packets
             elif protocol == 1 :
@@ -754,7 +766,6 @@ def main():
     logging.basicConfig(filename='logs/sipLocator.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S')   
     logging.info("-----------------------------------------------Initializing sipLocator server-----------------------------------------------")
     print "-----------------------------------------------Initializing sipLocator server-----------------------------------------------"
-    
     try:
         initPacketCapture()
     except KeyboardInterrupt:
@@ -773,6 +784,4 @@ def main():
        pass
         
 if __name__ == '__main__':
-    main()        
-
-
+    main()
