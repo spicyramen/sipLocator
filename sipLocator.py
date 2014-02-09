@@ -384,7 +384,7 @@ def ccEngine(sipMsg):
             
             if sipLocatorConfig.ENABLE_SMS_NOTIFICATIONS:
                 try:
-                    thread = Thread(target=notifyViaSms,args = ("New call has been processed From:  " + sipMsg.getSipHeaders().get("To:"), ))
+                    thread = Thread(target=notifyViaSms,args = ("New call has been processed To:  " + sipMsg.getSipHeaders().get("To:"), ))
                     thread.start()
                     thread.join()
                     print 'ccEngine() notifyViaSms()'
@@ -438,7 +438,7 @@ def ccEngine(sipMsg):
                 
                 if sipLocatorConfig.ENABLE_SMS_NOTIFICATIONS:
                     try:
-                        thread = Thread(target=notifyViaSms,args = ("New call has been processed From:  " + sipMsg.getSipHeaders().get("To:"), ))
+                        thread = Thread(target=notifyViaSms,args = ("New call has been processed To:  " + sipMsg.getSipHeaders().get("To:"), ))
                         thread.start()
                         thread.join()
                         print 'ccEngine() notifyViaSms()'
@@ -536,7 +536,7 @@ def _sipTcpReceiver(socket,firstSipPacket):
             #logging.info('_sipTcpReceiver extracted fragment number (%d). Extracted TCP data  <![sipLocator[%s]]>',fragmentNumber,data)
 
             if pending:
-                logging.info('_sipTcpReceiver length (%d)',len(data))
+                #logging.info('_sipTcpReceiver length (%d)',len(data))
                 pending += data
                 while True:
                     msg = pending
@@ -571,6 +571,7 @@ def _sipTcpReceiver(socket,firstSipPacket):
         except Exception,e:
             # Something else happened, handle error, exit, etc.
             print e
+            logging.error(e)
             sys.exit(1)
 
 #@profile 

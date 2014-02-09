@@ -15,16 +15,15 @@ If you want to receive SMS Notifications install twilio library
 	a)  Change sipLocatorConfig to:
 		ENABLE_SMS_NOTIFICATIONS = True
 
-4) Edit sipLocatorConfig.py
-	
-	XML_GEO_LOCATION
-	XML_GEO_SEARCH_ENABLED
+4) Run python sipLocator.py
 
-5) Run python sipLocator.py
 
-XML server
+sipLocator XML server
 ----------------------------
 1) Edit sipLocatorConfig.py
+
+        XML_GEO_LOCATION
+        XML_GEO_SEARCH_ENABLED
 	
 	XML_HOSTNAME
 	XML_PORT
@@ -34,3 +33,4 @@ XML server
 2) Run python sipLocatorXmlRpc.py
 
 TODO: WebSockets support
+TODO: SIP CLF support
