@@ -500,20 +500,45 @@ def printHex(data):
     logging.info('\nHex data: \n%s\n\n', formatted_hex)
 
 #Catch all TCP fragmented
-def _sipTcpReceiver(socket,firstSipPacket):
+def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
     #Add the existing data from first check
-    pending = firstSipPacket
-    if not pending:logging.warn('_sipTcpReceiver empty App data segment');return None # No Content length yet
-    fragmentNumber = 1
     logging.info('-----------------------------------------------_sipTcpReceiver()------------------------------------------------')
-    logging.info('_sipTcpReceiver() fragment (%d). Initial App data: <![sipLocator[%s]]>\n',fragmentNumber,firstSipPacket)
+    fragmentNumber = 1
+    packetCount    = 1
+    sipPacketCount = 1
+    
+    if not firstSipPacket:logging.warn('_sipTcpReceiver() empty App firstSipPacket segment');return None # No Content length yet
+
+    #logging.info('_sipTcpReceiver() fragment (%d). Initial App data: <![_sipTcpReceiver[%s]]>\n',fragmentNumber,firstSipPacket)
+    sipMsg = firstSipPacket
+    #Verify if TCP packet is fragmented
+    index1, index2 = sipMsg.find('\n\n'), sipMsg.find('\n\r\n')
+    logging.info('index1 (%d) index2 (%d)',index1,index2)
+    if index2 > 0:
+        index = index2 + 3
+        match = re.search(r'content-length\s*:\s*(\d+)\r?\n', sipMsg.lower())
+        if not match: 
+            logging.warn('No Content-Length found') #- Pending further content.
+        else:
+            length = int(match.group(1))
+            if len(sipMsg) == index + length: 
+                logging.info('_sipTcpReceiver(). No TCP Fragmentation detected. Packet Length(%d)',index+length) # No pending further content.
+                return firstSipPacket
+            else:
+                logging.info('_sipTcpReceiver(). TCP Fragmentation detected Pending further content. Packet Length(%d)',index+length)
+
+    # TCP Fragmentation detected - Pending further content.
+    pending = firstSipPacket
+
     while True:
-        # Get more info from existing socket
-        #fragmentNumber = fragmentNumber + 1
+        #logging.info('******* Packet count(%d) - Sip packets(%d)',packetCount,sipPacketCount)
+        # Get more info from existing socket and verify if TCP fragmentation exists.
+        # Is packet completed
         try:
-            # Obtain next TCP fragment
-            # Ethernet 14 byte, IP 20 bytes, TCP 32 bytes ~ 66 bytes
-            packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE) 
+            # Obtain next TCP fragment Ethernet 14 byte, IP 20 bytes, TCP 32 bytes -> 66 bytes
+            packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE)
+            logging.info('******** Reading new packet from OS()')
+            packetCount = packetCount + 1
             #Parse ethernet header
             eth_length = 14
             ip_header = packet[eth_length:20+eth_length]          
@@ -523,62 +548,75 @@ def _sipTcpReceiver(socket,firstSipPacket):
             version = version_ihl >> 4
             ihl = version_ihl & 0xF
             iph_length = ihl * 4
-            t = iph_length + eth_length
-
-            # Bug: Ip header can be variable >= 20
-            tcp_header = packet[t:t+20]
+            ttl = iph[5]
+            protocol = iph[6]
+            t = iph_length + eth_length           
+            tcp_header = packet[t:t+20]  # TODO: Ip header can be variable >= 20 TCP Offset support
             #now unpack them 
             tcph = unpack('!HHLLBBHHH',tcp_header)
             source_port = tcph[0]
             dest_port = tcph[1]
-            sequence = tcph[2]
-            acknowledgement = tcph[3]
-            doff_reserved = tcph[4]
-            tcph_length = doff_reserved >> 4
-            h_size = eth_length + iph_length + tcph_length * 4
-            data_size = len(packet) - h_size
-            #get data from the packet
-            data = packet[h_size:]
-            #logging.info('_sipTcpReceiver extracted fragment number (%d). Extracted App data  <![sipLocator[%s]]>',fragmentNumber,data)
-            # Pending is True as initial data exists
+           
+            if (dest_port == sipLocatorConfig.SIP_PORT or source_port == sipLocatorConfig.SIP_PORT) and (protocol==6):
+                sipPacketCount = sipPacketCount + 1
+                sequence = tcph[2]
+                acknowledgement = tcph[3]
+                doff_reserved = tcph[4]
+                tcph_length = doff_reserved >> 4
+                h_size = eth_length + iph_length + tcph_length * 4
+                data_size = len(packet) - h_size
+                #get data from the packet
+                data = packet[h_size:]
+                #logging.info('_sipTcpReceiver extracted fragment number (%d). Extracted App data  <![sipLocator[%s]]>',fragmentNumber,data)
+                # Pending is True as initial data exists
 
-            if h_size <= 66 and len(data) == 0: 
-                logging.warn('_sipTcpReceiver() no App content (Possible a TCP Acknowledgement) - Header size: (%d)',h_size)
-                continue;
+                print               
+                logging.info("------------------------------------------------------Stack processing SIP Packet------------------------------------------------------")
+                print "------------------------------------------------------Stack processing TCP SIP Packet------------------------------------------------------"
+                logging.info('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))                   
+                print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
+                logging.info('Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length))
+                print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
 
-            if pending:
-                logging.info('_sipTcpReceiver() fragment (%d). Length (%d) - Header size: (%d)',fragmentNumber,len(data),h_size)
-                logging.info('_sipTcpReceiver() App data extracted: ' + data + '\n')
-                pending += data
-                while True:
-                    msg = pending
-                    index1, index2 = msg.find('\n\n'), msg.find('\n\r\n')
-                    if index2 > 0 and index1 > 0:
-                        if index1 < index2:
-                            index = index1 + 2
-                        else: 
-                            index = index2 + 3
-                    elif index1 > 0: 
-                        index = index1 + 2
-                    elif index2 > 0:
-                        index = index2 + 3
-                    else:
-                        logging.warn('_sipTcpReceiver() no CRLF found'); break # No header part yet
-                    
-                    match = re.search(r'content-length\s*:\s*(\d+)\r?\n', msg.lower())
-                    if not match: logging.warn('No Content-Length found'); break # no content length yet
-                    length = int(match.group(1))
-                    #logging.info('_sipTcpReceiver Sip data Up to index <![sipLocator[%s]]>\n', msg[:index+length])
-                    logging.info('_sipTcpReceiver Index: %d Length: %d Sip data Body <![sipLocator[%s]]>\n\n', index, index+length, msg[index:index+length])
-                    if len(msg) < index + length: logging.info('_sipTcpReceiver fragment (%d). App Message has more content: %d < %d (%d+%d)', fragmentNumber, len(msg), index+length, index, length);break # pending further content.
-                    total, pending = msg[:index+length], msg[index+length:]
-                    #logging.info('_sipTcpReceiver pending App data <![sipLocator[%s]]>\n', pending)
-                    logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![sipLocator[%s%s]]>\n', fragmentNumber, total,pending)
-                    return total+pending
+                if h_size <= 66 and len(data) == 0:
+                    #logging.warn('_sipTcpReceiver() no App content (Possible a TCP Acknowledgement) - Header size: (%d)',h_size)
+                    continue;
+
+                if pending:
+                    fragmentNumber = fragmentNumber + 1                 
+                    #logging.info('_sipTcpReceiver() fragment (%d). Length (%d) - Header size: (%d)',fragmentNumber,len(data),h_size)
+                    #logging.info('_sipTcpReceiver() App data extracted <![_sipTcpReceiver[%s]]>\n',data )
+                    pending += data
+                    while True:
+                        msg = pending
+                        index1, index2 = msg.find('\n\n'), msg.find('\n\r\n')
+                        if index2 > 0 and index1 > 0:
+                            if index1 < index2:
+                                index = index1 + 2
+                            else: 
+                                index = index2 + 3
+                        elif index1 > 0: 
+                                index = index1 + 2
+                        elif index2 > 0:
+                                index = index2 + 3
+                        else:
+                                logging.warn('_sipTcpReceiver() no CRLF found'); break # No header part yet
+                        match = re.search(r'content-length\s*:\s*(\d+)\r?\n', msg.lower())
+                        if not match: logging.warn('No Content-Length found'); break # no content length yet
+                        length = int(match.group(1))
+                        #logging.info('_sipTcpReceiver Sip data Up to index %d <![sipLocator[%s]]>\n', index,msg[:index+length])
+                        #logging.info('_sipTcpReceiver Index: %d Length: %d Sip data Body <![_sipTcpReceiver[%s]]>\n\n', index, index+length, msg[:index+length])
+                        if len(msg) < index + length: logging.info('_sipTcpReceiver fragment (%d). App Message has more content: %d < %d (%d+%d)', fragmentNumber, len(msg), index+length, index, length);break # pending further content.
+                        total, pending = msg[:index+length], msg[index+length:]
+                        #logging.info('_sipTcpReceiver pending App data <![sipLocator[%s]]>\n', pending)
+                        logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s%s]]>\n', fragmentNumber, total,pending)
+                        return total+pending
+                else:
+                    logging.warn('_sipTcpReceiver() Empty packet')
+                    break
+                    # else signal a failure
             else:
-                logging.warn('_sipTcpReceiver() Empty packet')
-                break
-                # else signal a failure
+                logging.warn('Discard packet for processing during TCP reassambly. Non SIP Packet')
 
         except Exception,e:
             # Something else happened, handle error, exit, etc.
@@ -605,6 +643,7 @@ def initPacketCapture() :
     except Exception,e:
         print e
         sys.exit(1)
+
 
     # Receive a packet
     while True:
@@ -635,7 +674,7 @@ def initPacketCapture() :
             d_addr = socket.inet_ntoa(iph[9]);
      
             #TCP protocol
-            if protocol == 6 :
+            if protocol == 6:
                 t = iph_length + eth_length
                 tcp_header = packet[t:t+20]
                 #now unpack them :)
@@ -664,18 +703,12 @@ def initPacketCapture() :
                     ipInfo['d_addr'] = str(d_addr)
                     ipInfo['dest_port'] = dest_port
                     
-                    logging.info('initPacketCapture() SIP TCP packet data detected')
-                    print 'initPacketCapture() SIP TCP packet data detected'
-                    sipData = _sipTcpReceiver(s,data)                  
+                    logging.info('initPacketCapture() SIP TCP App packet data detected')
+                    print 'initPacketCapture() SIP TCP App packet data detected'                
+                    sipData = _sipTcpReceiver(s,data,s_addr,d_addr)
+                    #sipData = _sipTcpReceiver(s,data)
 
                     if sipData is not None:
-                        print               
-                        logging.info("------------------------------------------------------Stack processed SIP TCP data------------------------------------------------------")
-                        print "------------------------------------------------------Stack processed TCP SIP data------------------------------------------------------"
-                        logging.info('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))                   
-                        print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
-                        logging.info('Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length))                    
-                        print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
                         processSipPacket(sipData,ipInfo)
      
                 if dest_port == sipLocatorConfig.WS_PORT:   
