@@ -614,20 +614,6 @@ def notifyViaSms(textMessage):
         print traceback.format_exc()
         print e
 
-# validates if its a SIP URI sip:user@1.1.1.1|sip:user@1.1.1.1:5060|sip:user@domain|sip:user@domain:5060
-# Do basic check as assumes SIP Parser already process SIP message
-# validSipUri
-def validSipUri(sipLine):
-    try:
-        Message = re.match(r'^sip:.*\@\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$:\d{1,5}$|^sip:.*\@\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$|^sip:\+?[\w.-]+@[\w.-]+.\w{2,4}|^sip:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$|^sip:[\w.-]+.\w{2,4}',sipLine)
-        if Message:
-            logging.info('validSipUri() *******' + sipLine)
-            return True
-        else:
-            return False
-    except:
-        return False  
-
 # validTcpPort
 # Verifies if its a Valid IP port 1-65535
 def validTcpPort(port):
@@ -697,12 +683,11 @@ def ccSipClfEngine(sipMsg):
         thread = Thread(target=sipMsg.processSipMsgClf,args = ( ))
         thread.start()
         thread.join()
-        sipMsg.printSipMsgClf(False)
+        #sipMsg.printSipMsgClf(False)
     except Exception,e:
         logging.error("ccSipClfEngine Exception calling processSipMsgClf()" + str(e))
         print traceback.format_exc()
         print e
-    #sipMsg.printSipMsgClf()
 
 # ccSipEngine
 # Verifies if its a new call and contacts SIP Parse to upload info
