@@ -1,13 +1,14 @@
 '''
 @author Gonzalo Gasca Meza
-        AT&T Labs 
+        AT&T Labs, Inc
+        gg608f[at]att.com
         Date: September 2013
         Purpose: Sniffs all incoming and outgoing SIP packets and upload geoLocation information to parse.com
         February 2014 - Version 1.1 Add SIP CLF support
 
 '''
 import sipLocatorConfig
-import socket,sys,logging,traceback,re,urllib,ast,os,binascii,datetime,delorean
+import socket,sys,logging,traceback,re,urllib,ast,os,binascii,datetime,delorean,string,random
 from twilio.rest import TwilioRestClient
 from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
@@ -15,20 +16,19 @@ from threading import Thread
 from time import sleep
 from struct import *
 
-
 #from gevent import monkey, Greenlet, GreenletExit
 #monkey.patch_socket()
 #from gevent.queue import Queue
-
 #import psutil
 #from memory_profiler import profile
 
 sys.excepthook = lambda *args: None
 # Global variables
 register(sipLocatorConfig.PARSE_APPLICATION_ID, sipLocatorConfig.PARSE_REST_API_KEY)
-sipCallList = []
-sipMessagesList = []
-sipClfCalls = []
+sipMessagesList     = []
+sipCallListNumber   = []
+sipClfCalls         = []
+sipProcessedCalls   = {}
 
 # SipMessage Object using CLF format
 class sipClf(Object):
@@ -42,7 +42,8 @@ class sipClf(Object):
         self.msgType = ''           # R: Request, r: response
         self.directionality = ''    # s: message sent, r: message received
         self.transport = ''         # tcp, udp, tls
-        self.csqNumber = ''         # Cseq:
+        self.encrypted = ''         # E: Encrypted message, U: Unencrypted message
+        self.csqNumber = ''         # Cseq Number
         self.csqMethod = ''         # Cseq: 
         self.reqUri = ''            # SIP URI
         self.dstAddress = ''        # IP Address destination
@@ -63,7 +64,6 @@ class sipClf(Object):
         self.sipMsgSdpInfo    = {}  # Store SIP SDP contents
         self.sipMsgMethodInfo = ''  # Store SIP Mthod info
         self.containsError    = False
-
 
     def processSipMsgTimeStamp(self):
         dt = datetime.datetime.utcnow()
@@ -97,17 +97,26 @@ class sipClf(Object):
     def processSipMsgTransport(self):
         if self.sipMsgIpInfo!='' or self.sipMsgIpInfo == None:
             if self.sipMsgIpInfo.get('protocol')==6:
-                self.transport='tcp'
+                if sipLocatorConfig.ENABLE_TLS:
+                    self.transport='tls'
+                    self.encrypted='E'
+                else:    
+                    self.transport='tcp'
+                    self.encrypted='U'
             elif self.sipMsgIpInfo.get('protocol')==17:
                 self.transport='udp'
+                self.encrypted='U'
             else:
                 self.transport = '?'
+                self.encrypted='?'
         else:
             logging.error('processSipMsgTransport() No ip address defined')
             self.containsError = True
             self.transport = '?'
+            self.encrypted='?'
 
     def processSipMsgDirection(self):
+        #s: message sent, r: message received
         try:
             if self.sipMsgIpInfo!='' or self.sipMsgIpInfo == None:
                 #Extract Network Card information and do not include loopback IP address
@@ -115,7 +124,7 @@ class sipClf(Object):
                 #Single Network Interface
                 if len(ip_address) == 1:
                     if ip_address[0] == self.srcAddress and validIpAddress(ip_address[0]):
-                        self.directionality = 's'
+                        self.directionality = 's'                        
                     elif ip_address[0] == self.dstAddress and validIpAddress(ip_address[0]):
                         self.directionality = 'r'
                     else:
@@ -138,6 +147,9 @@ class sipClf(Object):
             self.containsError = True
             print traceback.format_exc()
             print e
+
+    def generateIdCode(size=6, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for x in range(size))
 
     def processSipMsgFromTag(self):
         try:
@@ -311,6 +323,11 @@ class sipClf(Object):
             print traceback.format_exc()
             print e
 
+    def processSipMsgTransaction():
+        self.serverTxn = '-'         # Server transaction identification code - UAS
+        self.clientTxn = '-'         # Client transaction identification code - UAC
+        # 
+
     def processSipMsgClf(self):
         self.processSipMsgTimeStamp()
         self.processSipMsgType()
@@ -332,6 +349,7 @@ class sipClf(Object):
         logging.info('Message Type: ' + self.msgType)
         logging.info('Directionality: ' + self.directionality)
         logging.info('Transport: ' + str(self.transport))
+        logging.info('Encrypted: ' + str(self.encrypted))
         logging.info('CSeq-Number: ' + self.csqNumber)
         logging.info('CSeq-Method: ' + self.csqMethod)
         logging.info('R-URI: ' + self.reqUri)
@@ -399,8 +417,15 @@ class sipCall(Object):
         print 'sipCall() New sipCall object created()'
         self.sipCallID = ''
         self.sipCallGeoPoint = GeoPoint(latitude=0.0, longitude=0.0)
-        self.sipCallGeoLocation = {}
-     
+        self.sipCallGeoLocation = {}     
+        self.localCall   = False
+    
+    def isLocal(self):
+        return self.localCall
+
+    def setLocalCall(self,local):
+        self.localCall=local
+
     def setCallId(self,msg):
         self.sipCallID = msg
  
@@ -431,7 +456,34 @@ class sipMessage(Object):
         self.sipMsgMethodInfo = ''
         self.sipMsgCallId     = ''
         self.size             = 0
-    
+
+    def isSipMsgLocal(self):
+        try:
+            if self.sipMsgIpInfo!='' or self.sipMsgIpInfo == None:
+                #Extract Network Card information and do not include loopback IP address
+                ip_address = ([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][:1])
+                #Single Network Interface
+                if len(ip_address) == 1:
+                    if ip_address[0] == self.sipMsgIpInfo.get('s_addr') and validIpAddress(ip_address[0]):
+                        return True                       
+                    elif ip_address[0] == self.sipMsgIpInfo.get('d_addr') and validIpAddress(ip_address[0]):
+                        return False
+                    else:
+                        return False
+                #Multiple Network interfaces. Verify Local Private IP Address Parameter in Configuration File
+                else:   
+                    if self.sipMsgIpInfo.get('s_addr') == sipLocatorConfig.SIP_PRIVATE_HOSTNAME and validIpAddress(sipLocatorConfig.SIP_PRIVATE_HOSTNAME):
+                        return True
+                    else:
+                        return False
+            else:
+                return False
+        except Exception,e:
+            logging.error('isSipMsgLocal() Exception' + str(e))
+            return False
+            print traceback.format_exc()
+            print e
+
     def setSipMessage(self,msg):
         self.sipMsgMethodInfo = msg
   
@@ -679,6 +731,7 @@ def ccProcessSipInformation(sipMsg):
 # Verifies if its a new call and contacts SIP Parse to upload info
 #@profile
 def ccSipClfEngine(sipMsg):
+    #Obtain SipCLF fields   
     try:
         thread = Thread(target=sipMsg.processSipMsgClf,args = ( ))
         thread.start()
@@ -700,8 +753,8 @@ def ccSipEngine(sipMsg):
     sipMsg.processSipMsgCallId()
     # Insert Local Array
     sipMessagesList.append(sipMsg)
-    # Store SIP Message in Parse
-    # Create a New Thread
+
+    #Store SIP Message in Parse
     # sipMessageInsertViaParse(sipMsg)
     if sipLocatorConfig.ENABLE_PARSE:
         try:
@@ -718,25 +771,33 @@ def ccSipEngine(sipMsg):
 
     #SIP Message INVITE found - New call
     if sipMessage.find('INVITE')!= -1:
-        print 'Total sipLocator calls: ' + str(len(sipCallList))
+        print 'Total sipLocator calls: ' + str(len(sipCallListNumber))
         logging.info("ccSipEngine() INVITE Message detected")
         print 'ccSipEngine() INVITE Message detected: ' + sipMessage
-        # First call in system
-        if len(sipCallList) == 0:
+        # First call in system (During system start)
+        if len(sipCallListNumber) == 0:
+
             newSipCall = sipCall()
             newSipCall.setCallId(sipCallID)
             logging.info("ccSipEngine() Initializing List of Calls. New Call created. Call-ID: " + newSipCall.getSipCallId())
-            #print 'ccSipEngine() Initializing List of Calls. New Call created. Call-ID: ' + newSipCall.getSipCallId()
-            # Process GeoLocation
-            sipCallList.append(sipCallID)
             # Multi-threading
             # Process Call GeoLocation
+            sipSrcIpAddress = ccProcessSipInformation(sipMsg)
+            
+            if sipMsg.isSipMsgLocal():
+                logging.info('ccSipEngine() Call Sent')
+                newSipCall.setLocalCall(True)
+                sipProcessedCalls[newSipCall.getSipCallId()]=True
+            else:
+                logging.info('ccSipEngine() Call Received')
+                sipProcessedCalls[newSipCall.getSipCallId()]=False
+                
+            sipCallListNumber.append(sipCallID)
             sipSrcIpAddress = ccProcessSipInformation(sipMsg)
             try:
                 thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipSrcIpAddress), ))
                 thread.start()
                 thread.join()
-                #print 'ccSipEngine() setSipCallGeolocation()'
             except Exception,e:
                 logging.error("ccSipEngine Exception calling setSipCallGeolocation()" + str(e))
                 print traceback.format_exc()
@@ -780,12 +841,21 @@ def ccSipEngine(sipMsg):
                     
         else:
             # Check each call Object and verify Call-ID does not exist. If does not exist, insert new call, otherwise is a SIP Re-Invite
-            print 'Total sipLocator calls: ' + str(len(sipCallList))
-            if not sipCallID in sipCallList:
+            print 'Total sipLocator calls: ' + str(len(sipCallListNumber))
+            if not sipCallID in sipCallListNumber:
                 logging.info("ccSipEngine() New Call created. Call-ID: " + sipCallID)
                 #print 'ccSipEngine() New Call created. Call-ID: ' + sipCallID
                 newSipCall = sipCall()
                 newSipCall.setCallId(sipCallID)
+                
+                if sipMsg.isSipMsgLocal():
+                    logging.info('ccSipEngine() Call Sent')
+                    newSipCall.setLocalCall(True)
+                    sipProcessedCalls[newSipCall.getSipCallId()]=True
+                else:
+                    logging.info('ccSipEngine() Call Received')
+                    sipProcessedCalls[newSipCall.getSipCallId()]=False
+                    
                 # Process Call GeoLocation
                 sipSrcIpAddress = ccProcessSipInformation(sipMsg)
                 try:
@@ -814,7 +884,8 @@ def ccSipEngine(sipMsg):
                     print traceback.format_exc()
                     print e
                     
-                sipCallList.append(sipCallID)
+                sipCallListNumber.append(sipCallID)
+
                 # Multi-threading
                 if sipLocatorConfig.ENABLE_PARSE:
                     try:
@@ -826,7 +897,6 @@ def ccSipEngine(sipMsg):
                         print traceback.format_exc()
                         print e
                         
-
                 if sipLocatorConfig.ENABLE_SMS_NOTIFICATIONS:
                     try:
                         thread = Thread(target=notifyViaSms,args = ("New call has been processed To:  " + sipMsg.getSipHeaders().get("To:"), ))
@@ -837,8 +907,6 @@ def ccSipEngine(sipMsg):
                         logging.error("ccSipEngine Exception calling notifyViaSms()" + str(e))
                         print traceback.format_exc()
                         print e
-
-                 
 
             else:
                 logging.info('ccSipEngine() Re-Invite detected()')
