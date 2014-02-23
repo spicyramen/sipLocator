@@ -455,7 +455,6 @@ class sipMessage(Object):
         self.hasSDP           = False
         self.sipMsgMethodInfo = ''
         self.sipMsgCallId     = ''
-        self.size             = 0
 
     def isSipMsgLocal(self):
         try:
@@ -976,7 +975,7 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
             length = int(match.group(1))
             if len(sipMsg) == index + length: 
                 logging.info('_sipTcpReceiver(). No TCP Fragmentation detected. Packet Length(%d)',index+length) # No pending further content.
-                logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s]]>\n', fragmentNumber, firstSipPacket)
+                #logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s]]>\n', fragmentNumber, firstSipPacket)
                 return firstSipPacket
             else:
                 logging.info('_sipTcpReceiver(). TCP Fragmentation detected Pending further content. Packet Length(%d)',index+length)
@@ -991,7 +990,7 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
         try:
             # Obtain next TCP fragment Ethernet 14 byte, IP 20 bytes, TCP 32 bytes -> 66 bytes
             packet = socket.recv(sipLocatorConfig.NETWORK_TCP_MAX_SIZE)
-            logging.info('********** _sipTcpReceiver() Reading new packet from OS()->')
+            #logging.info('********** _sipTcpReceiver() Reading new packet from OS()->')
             packetCount = packetCount + 1
             #Parse ethernet header
             eth_length = 14
@@ -1010,7 +1009,7 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
             tcph = unpack('!HHLLBBHHH',tcp_header)
             source_port = tcph[0]
             dest_port = tcph[1]
-           
+
             if (dest_port == sipLocatorConfig.SIP_PORT or source_port == sipLocatorConfig.SIP_PORT) and (protocol==6):
                 sipPacketCount = sipPacketCount + 1
                 sequence = tcph[2]
@@ -1063,7 +1062,7 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
                         if len(msg) < index + length: logging.info('_sipTcpReceiver fragment (%d). App Message has more content: %d < %d (%d+%d)', fragmentNumber, len(msg), index+length, index, length);break # pending further content.
                         total, pending = msg[:index+length], msg[index+length:]
                         #logging.info('_sipTcpReceiver pending App data <![sipLocator[%s]]>\n', pending)
-                        logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s%s]]>\n', fragmentNumber, total,pending)
+                        #logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s%s]]>\n', fragmentNumber, total,pending)
                         return total+pending
                 else:
                     logging.warn('_sipTcpReceiver() Empty packet')
