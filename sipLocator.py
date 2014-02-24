@@ -30,8 +30,9 @@ sipMsgQueue = Queue(sipLocatorConfig.XML_SIP_MESSAGE_LIMIT)
 sipCallQueue = Queue(sipLocatorConfig.XML_SIP_CALL_LIMIT)
 sipMessagesList     = []
 sipCallListNumber   = []
-sipClfCalls         = []
+sipClfCalls         = {}
 sipProcessedCalls   = {}
+
 
 # SipMessage Object using CLF format
 class sipClf(Object):
@@ -323,24 +324,25 @@ class sipClf(Object):
             print e
 
     def processSipMsgTransaction(self):
-        self.serverTxn = '-'         # Server transaction identification code - UAS
-        self.clientTxn = '-'         # Client transaction identification code - UAC
         try:
             if sipLocatorConfig.SIP_CLF_MODE_CLIENT:                  
-                if sipProcessedCalls.get(self.callId) is True and sipProcessedCalls.get(self.callId)!=None:
-                    if len(self.clientTxn)!=6:
-                        self.clientTxn = generateIdCode() 
-                        logging.info('sipClf() - processSipMsgTransaction - Message: %s Call-ID: %s Local (%s) Code(%s)',self.sipMsgMethodInfo, self.sipHeaderInfo['Call-ID:'], self.sipMsgIpInfo.get('s_addr'),self.clientTxn)                         
-                elif sipProcessedCalls.get(self.callId) is False:                    
-                    if len(self.serverTxn)!=6:
-                        self.serverTxn = generateIdCode()
-                        logging.info('sipClf() - processSipMsgTransaction - Message: %s Call-ID: %s Remote (%s) Code(%s)',self.sipMsgMethodInfo, self.sipHeaderInfo['Call-ID:'], self.sipMsgIpInfo.get('s_addr'),self.serverTxn)
-                else:
+                if self.callId in sipProcessedCalls.keys() and self.callId in sipClfCalls.keys():
+                    logging.info('sipClf() - processSipMsgTransaction - Call exists in system Call-ID: %s Local: (%s), Code: (%s)', self.callId,str(sipProcessedCalls.get(self.callId)),sipClfCalls.get(self.callId))
+                    if sipProcessedCalls.get(self.callId) == True: #Local Call originated as client
+                        self.clientTxn = sipClfCalls.get(self.callId)
+                        self.serverTxn = '-'
+                        logging.info('sipClf() - processSipMsgTransaction - Message: %s Call-ID: %s (%s) clientTxn:(%s)',self.sipMsgMethodInfo, self.sipHeaderInfo['Call-ID:'], self.sipMsgIpInfo.get('s_addr'),self.clientTxn)
+                    else:
+                        self.serverTxn = sipClfCalls.get(self.callId)
+                        self.clientTxn = '-'
+                        logging.info('sipClf() - processSipMsgTransaction - Message: %s Call-ID: %s (%s) serverTxn:(%s)',self.sipMsgMethodInfo, self.sipHeaderInfo['Call-ID:'], self.sipMsgIpInfo.get('s_addr'),self.serverTxn)
+                elif not self.callId in sipProcessedCalls.keys():                    
                     # TODO: Add REGISTER Support
                     logging.warn('sipClf() - processSipMsgTransaction() - SIP Message not in cache Call-ID: %s',self.sipHeaderInfo['Call-ID:'])
+                    self.serverTxn = '-'
+                    self.clientTxn = '-'
             else:
                 logging.info('sipClf() - processSipMsgTransaction - B2BUA Disabled')
-
         except Exception,e:
             self.serverTxn = '?'         # Server transaction identification code - UAS
             self.clientTxn = '?'         # Client transaction identification code - UAC
@@ -363,7 +365,7 @@ class sipClf(Object):
         self.processSipMsgCSeq()
         self.processSipMsgReqUri()
         self.processSipMsgStatusCode()
-        #self.processSipMsgTransaction()
+        self.processSipMsgTransaction()
 
     def printSipMsgClf(self,advancedMode):
         logging.info("------------------------------------------------------printSipMsgClf() App Processing SIP CLF message------------------------------------------------------")
@@ -814,10 +816,12 @@ def ccSipEngine(sipMsg):
             if sipMsg.isSipMsgLocal():
                 logging.info('ccSipEngine() - Call Sent. Call-ID: ' + sipMsg.getSipMsgCallId())
                 newSipCall.setLocalCall(True)
-                sipProcessedCalls[newSipCall.getSipCallId()]=True                
+                sipProcessedCalls[newSipCall.getSipCallId()]=True
+                sipClfCalls[newSipCall.getSipCallId()]=generateIdCode()             
             else:
                 logging.info('ccSipEngine() - Call Received. Call-ID: ' + sipMsg.getSipMsgCallId())
                 sipProcessedCalls[newSipCall.getSipCallId()]=False
+                sipClfCalls[newSipCall.getSipCallId()]=generateIdCode()
 
             # Process Call GeoLocation
             if sipLocatorConfig.ENABLE_GEOLOCATION:     
@@ -881,10 +885,12 @@ def ccSipEngine(sipMsg):
                 if sipMsg.isSipMsgLocal():
                     logging.info('ccSipEngine() - Call Sent. Call-ID: ' + sipMsg.getSipMsgCallId())
                     newSipCall.setLocalCall(True)
-                    sipProcessedCalls[newSipCall.getSipCallId()]=True                    
+                    sipProcessedCalls[newSipCall.getSipCallId()]=True
+                    sipClfCalls[newSipCall.getSipCallId()]=generateIdCode()                   
                 else:
                     logging.info('ccSipEngine() - Call Received. Call-ID: ' + sipMsg.getSipMsgCallId())
                     sipProcessedCalls[newSipCall.getSipCallId()]=False
+                    sipClfCalls[newSipCall.getSipCallId()]=generateIdCode()
                         
                 sipCallListNumber.append(sipCallID)
 
