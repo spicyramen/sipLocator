@@ -9,6 +9,7 @@
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast,os,binascii,datetime,delorean,string,random
+from Queue import Queue #Queue encapsulates the behaviour of Condition, wait(), notify(), acquire() etc.
 from twilio.rest import TwilioRestClient
 from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
@@ -25,6 +26,8 @@ from struct import *
 sys.excepthook = lambda *args: None
 # Global variables
 register(sipLocatorConfig.PARSE_APPLICATION_ID, sipLocatorConfig.PARSE_REST_API_KEY)
+sipMsgQueue = Queue(sipLocatorConfig.XML_SIP_MESSAGE_LIMIT)
+sipCallQueue = Queue(sipLocatorConfig.XML_SIP_CALL_LIMIT)
 sipMessagesList     = []
 sipCallListNumber   = []
 sipClfCalls         = []
@@ -32,7 +35,6 @@ sipProcessedCalls   = {}
 
 # SipMessage Object using CLF format
 class sipClf(Object):
-
     """Create a SIP CLF Object"""
     def __init__(self):
         logging.info("sipClf() New sipClf object created()")
@@ -147,9 +149,6 @@ class sipClf(Object):
             self.containsError = True
             print traceback.format_exc()
             print e
-
-    def generateIdCode(size=6, chars=string.ascii_uppercase + string.digits):
-        return ''.join(random.choice(chars) for x in range(size))
 
     def processSipMsgFromTag(self):
         try:
@@ -323,10 +322,28 @@ class sipClf(Object):
             print traceback.format_exc()
             print e
 
-    def processSipMsgTransaction():
+    def processSipMsgTransaction(self):
         self.serverTxn = '-'         # Server transaction identification code - UAS
         self.clientTxn = '-'         # Client transaction identification code - UAC
-        # 
+        try:
+            if sipLocatorConfig.SIP_CLF_MODE_CLIENT:               
+                if sipProcessedCalls.get(self.sipHeaderInfo['Call-ID:']) == True and sipProcessedCalls.get(self.sipHeaderInfo['Call-ID:'])!=None:
+                    logging.info('processSipMsgTransaction() ***** New Message Originated Locally')
+                    self.clientTxn = generateIdCode() if len(self.clientTxn)!=6
+                    print self.clientTxn
+                elif sipProcessedCalls.get(self.sipHeaderInfo['Call-ID:'])!=None:
+                    logging.info('processSipMsgTransaction() ***** New Message Originated Remote')
+                    self.serverTxn = generateIdCode() if len(self.serverTxn)!=6
+                    print self.serverTxn
+                else:
+                    # TODO: Add REGISTER Support
+                    logging.info('processSipMsgTransaction')
+        except Exception,e:
+            self.serverTxn = '?'         # Server transaction identification code - UAS
+            self.clientTxn = '?'         # Client transaction identification code - UAC
+            self.containsError = True
+            print traceback.format_exc()
+            print e
 
     def processSipMsgClf(self):
         self.processSipMsgTimeStamp()
@@ -342,6 +359,7 @@ class sipClf(Object):
         self.processSipMsgCSeq()
         self.processSipMsgReqUri()
         self.processSipMsgStatusCode()
+        self.processSipMsgTransaction()
 
     def printSipMsgClf(self,advancedMode):
         logging.info("------------------------------------------------------printSipMsgClf() App Processing SIP CLF message------------------------------------------------------")
@@ -549,7 +567,10 @@ class sipMessage(Object):
             logging.error("Unable to process processSipMsgSdp()")
             print traceback.format_exc()
             print e
-            
+
+#Generate Randome code
+def generateIdCode(size=6, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for x in range(size))
 
 #Obtain geoLocation
 def processGeoLocation(srcIP):
@@ -606,10 +627,10 @@ def processSipPacket(sipMsg,ipInfo):
                 # SIPCLF
                 if sipLocatorConfig.ENABLE_SIPCLF:
                     sipClfMessage.setSipMessage(message)
-                    logging.info("processSipMsgClf() ENABLE_SIPCLF True")
+                    logging.info("processSipPacket() ENABLE_SIPCLF True")
 
                 newSipMessage.setSipMessage(message)
-                logging.info("processSipPacket() SIP Method: " + newSipMessage.getSipMsgMethod())
+                logging.info("processSipPacket() SIP Method: " + message)
 
                 Message = None #Update to None
             if Header:
@@ -733,8 +754,9 @@ def ccSipClfEngine(sipMsg):
     #Obtain SipCLF fields   
     try:
         thread = Thread(target=sipMsg.processSipMsgClf,args = ( ))
+        thread.daemon = True
         thread.start()
-        thread.join()
+#        thread.join()
         #sipMsg.printSipMsgClf(False)
     except Exception,e:
         logging.error("ccSipClfEngine Exception calling processSipMsgClf()" + str(e))
@@ -758,12 +780,14 @@ def ccSipEngine(sipMsg):
     if sipLocatorConfig.ENABLE_PARSE:
         try:
             thread = Thread(target=sipMessageInsertViaParse,args = (sipMsg, ))
+            thread.daemon = True
             thread.start()
             thread.join()
         except Exception,e:
-            logging.error("ccSipEngine Exception calling sipMessageInsertViaParse()" + str(e))
+            logging.error("ccSipEngine() Exception calling sipMessageInsertViaParse()" + str(e))
+            print 'ccSipEngine() Exception calling sipMessageInsertViaParse()'  + str(e)
             print traceback.format_exc()
-            print 'sipMessageInsertViaParse() Error'
+            print e
  
     sipMessage = sipMsg.getSipMsgMethod()
     sipCallID  = sipMsg.getSipMsgCallId()
@@ -773,16 +797,16 @@ def ccSipEngine(sipMsg):
         print 'Total sipLocator calls: ' + str(len(sipCallListNumber))
         logging.info("ccSipEngine() INVITE Message detected")
         print 'ccSipEngine() INVITE Message detected: ' + sipMessage
+
         # First call in system (During system start)
         if len(sipCallListNumber) == 0:
-
             newSipCall = sipCall()
             newSipCall.setCallId(sipCallID)
-            logging.info("ccSipEngine() Initializing List of Calls. New Call created. Call-ID: " + newSipCall.getSipCallId())
-            # Multi-threading
-            # Process Call GeoLocation
-            sipSrcIpAddress = ccProcessSipInformation(sipMsg)
-            
+            logging.info("ccSipEngine() Initializing SipLocator List of Calls. New Call created. Call-ID: " + newSipCall.getSipCallId())
+
+            #Add Calls
+            sipCallListNumber.append(sipCallID)
+
             if sipMsg.isSipMsgLocal():
                 logging.info('ccSipEngine() Call Sent')
                 newSipCall.setLocalCall(True)
@@ -790,33 +814,35 @@ def ccSipEngine(sipMsg):
             else:
                 logging.info('ccSipEngine() Call Received')
                 sipProcessedCalls[newSipCall.getSipCallId()]=False
-                
-            sipCallListNumber.append(sipCallID)
-            sipSrcIpAddress = ccProcessSipInformation(sipMsg)
-            try:
-                thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipSrcIpAddress), ))
-                thread.start()
-                thread.join()
-            except Exception,e:
-                logging.error("ccSipEngine Exception calling setSipCallGeolocation()" + str(e))
-                print traceback.format_exc()
-                print e
-                
-           # Process Call GeoPoint
-            try:
-                geoLocationInfo = newSipCall.getSipCallGeoLocation()
-                if geoLocationInfo!=None:
-                    geoLocationPoint = []
-                    geoLocationPoint.append(geoLocationInfo['latitude'])
-                    geoLocationPoint.append(geoLocationInfo['longitude'])
-                    newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
-                else:
-                    logging.error('processGeoLocationPoint() Error. Empty GeoLocation info')
-                    newSipCall.setSipCallGeoPoint(-1,-1)  
-            except Exception,e:
-                print traceback.format_exc()
-                logging.error("ccSipEngine Exception calling processGeoLocationPoint()" + str(e))
 
+            # Process Call GeoLocation
+            if sipLocatorConfig.ENABLE_GEOLOCATION:     
+                try:
+                    sipSrcIpAddress = ccProcessSipInformation(sipMsg)
+                    thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipSrcIpAddress), ))
+                    thread.start()
+                    thread.join()
+                except Exception,e:
+                    logging.error("ccSipEngine Exception calling setSipCallGeolocation()" + str(e))
+                    print traceback.format_exc()
+                    print e
+                    
+               # Process Call GeoPoint
+                try:
+                    geoLocationInfo = newSipCall.getSipCallGeoLocation()
+                    if geoLocationInfo!=None:
+                        geoLocationPoint = []
+                        geoLocationPoint.append(geoLocationInfo['latitude'])
+                        geoLocationPoint.append(geoLocationInfo['longitude'])
+                        newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
+                    else:
+                        logging.error('processGeoLocationPoint() Error. Empty GeoLocation info')
+                        newSipCall.setSipCallGeoPoint(-1,-1)  
+                except Exception,e:
+                    print traceback.format_exc()
+                    logging.error("ccSipEngine Exception calling processGeoLocationPoint()" + str(e))
+
+            # Insert into Parse
             if sipLocatorConfig.ENABLE_PARSE:
                 try:
                     thread = Thread(target=sipCallInsertViaParse,args = (newSipCall, ))
@@ -827,6 +853,7 @@ def ccSipEngine(sipMsg):
                     print traceback.format_exc()
                     logging.error("ccSipEngine Exception calling sipCallInsertViaParse()" + str(e))
 
+            # Enable SMS Notifications
             if sipLocatorConfig.ENABLE_SMS_NOTIFICATIONS:
                 try:
                     thread = Thread(target=notifyViaSms,args = ("New call has been processed To:  " + sipMsg.getSipHeaders().get("To:"), ))
@@ -855,50 +882,54 @@ def ccSipEngine(sipMsg):
                     logging.info('ccSipEngine() Call Received')
                     sipProcessedCalls[newSipCall.getSipCallId()]=False
                     
-                # Process Call GeoLocation
-                sipSrcIpAddress = ccProcessSipInformation(sipMsg)
-                try:
-                    thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipSrcIpAddress), ))
-                    thread.start()
-                    thread.join()
-                    logging.info('ccSipEngine() setSipCallGeolocation()')
-                except Exception,e:
-                    logging.error('ccSipEngine() setSipCallGeolocation() Error')
-                    print traceback.format_exc()
-                    print e
-                    
-                # Process Call GeoPoint
-                try:
-                    geoLocationInfo = newSipCall.getSipCallGeoLocation()
-                    if geoLocationInfo!=None:
-                        geoLocationPoint = []
-                        geoLocationPoint.append(geoLocationInfo['latitude'])
-                        geoLocationPoint.append(geoLocationInfo['longitude'])
-                        newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
-                    else:
-                        print 'processGeoLocationPoint() Error. Empty GeoLocation info'
-                        newSipCall.setSipCallGeoPoint(-1,-1)  
-                except Exception,e:
-                    logging.error('processGeoLocationPoint() Error')
-                    print traceback.format_exc()
-                    print e
-                    
                 sipCallListNumber.append(sipCallID)
+
+                # Process Call GeoLocation 
+                if sipLocatorConfig.ENABLE_GEOLOCATION:                           
+                    try:
+                        sipSrcIpAddress = ccProcessSipInformation(sipMsg)
+                        thread = Thread(target=newSipCall.setSipCallGeolocation,args = (processGeoLocation(sipSrcIpAddress), ))
+                        thread.start()
+                        thread.join()
+                        logging.info('ccSipEngine() setSipCallGeolocation()')
+                    except Exception,e:
+                        logging.error('ccSipEngine() setSipCallGeolocation() Error')
+                        print traceback.format_exc()
+                        print e
+                        
+                    # Process Call GeoPoint
+                    try:
+                        geoLocationInfo = newSipCall.getSipCallGeoLocation()
+                        if geoLocationInfo!=None:
+                            geoLocationPoint = []
+                            geoLocationPoint.append(geoLocationInfo['latitude'])
+                            geoLocationPoint.append(geoLocationInfo['longitude'])
+                            newSipCall.setSipCallGeoPoint(geoLocationPoint[0],geoLocationPoint[1])
+                        else:
+                            print 'processGeoLocationPoint() Error. Empty GeoLocation info'
+                            newSipCall.setSipCallGeoPoint(-1,-1)  
+                    except Exception,e:
+                        logging.error('processGeoLocationPoint() Error')
+                        print traceback.format_exc()
+                        print e
 
                 # Multi-threading
                 if sipLocatorConfig.ENABLE_PARSE:
                     try:
                         thread = Thread(target=sipCallInsertViaParse,args = (newSipCall, ))
+                        thread.daemon = True
                         thread.start()
                         thread.join()
                     except Exception,e:
                         logging.error("ccSipEngine Exception calling sipCallInsertViaParse()" + str(e))
                         print traceback.format_exc()
                         print e
-                        
+                
+                # Enable SMS Notifications
                 if sipLocatorConfig.ENABLE_SMS_NOTIFICATIONS:
                     try:
                         thread = Thread(target=notifyViaSms,args = ("New call has been processed To:  " + sipMsg.getSipHeaders().get("To:"), ))
+                        thread.daemon = True
                         thread.start()
                         thread.join()
                         print 'ccSipEngine() notifyViaSms()'
@@ -939,7 +970,6 @@ def sipMessageInsertViaParse(sipMsg):
         print 'sipMessageInsertViaParse() Exception'
         print e
 
-
 #Convert a string of 6 characters of ethernet address into a dash separated hex string
 #@profile
 def eth_addr (a) :
@@ -952,14 +982,14 @@ def printHex(data):
     logging.info('\nHex data: \n%s\n\n', formatted_hex)
 
 #Catch all TCP fragmented
-def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
+def _sipTcpReceiver(socket,firstSipPacket):
     #Add the existing data from first check
     logging.info('-----------------------------------------------_sipTcpReceiver()------------------------------------------------')
     fragmentNumber = 1
     packetCount    = 1
     sipPacketCount = 1
     
-    if not firstSipPacket:logging.warn('_sipTcpReceiver() empty App firstSipPacket segment');return None # No Content length yet
+    if not firstSipPacket:logging.info('_sipTcpReceiver() empty App firstSipPacket segment');return None # No Content length yet
 
     #logging.info('_sipTcpReceiver() fragment (%d). Initial App data: <![_sipTcpReceiver[%s]]>\n',fragmentNumber,firstSipPacket)
     sipMsg = firstSipPacket
@@ -975,7 +1005,7 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
             length = int(match.group(1))
             if len(sipMsg) == index + length: 
                 logging.info('_sipTcpReceiver(). No TCP Fragmentation detected. Packet Length(%d)',index+length) # No pending further content.
-                #logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s]]>\n', fragmentNumber, firstSipPacket)
+                logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s]]>\n', fragmentNumber, firstSipPacket)
                 return firstSipPacket
             else:
                 logging.info('_sipTcpReceiver(). TCP Fragmentation detected Pending further content. Packet Length(%d)',index+length)
@@ -1023,14 +1053,6 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
                 #logging.info('_sipTcpReceiver extracted fragment number (%d). Extracted App data  <![sipLocator[%s]]>',fragmentNumber,data)
                 # Pending is True as initial data exists
 
-                print               
-                logging.info("------------------------------------------------------_sipTcpReceiver() Stack processing SIP Packet------------------------------------------------------")
-                print "------------------------------------------------------_sipTcpReceiver() Stack processing TCP SIP Packet------------------------------------------------------"
-                logging.info('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))                   
-                print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
-                logging.info('Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length))
-                print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
-
                 if h_size <= 66 and len(data) == 0:
                     #logging.warn('_sipTcpReceiver() no App content (Possible a TCP Acknowledgement) - Header size: (%d)',h_size)
                     continue;
@@ -1053,7 +1075,7 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
                         elif index2 > 0:
                                 index = index2 + 3
                         else:
-                                logging.warn('_sipTcpReceiver() no CRLF found'); break # No header part yet
+                            logging.warn('_sipTcpReceiver() no CRLF found'); break # No header part yet
                         match = re.search(r'content-length\s*:\s*(\d+)\r?\n', msg.lower())
                         if not match: logging.warn('No Content-Length found'); break # no content length yet
                         length = int(match.group(1))
@@ -1062,7 +1084,7 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
                         if len(msg) < index + length: logging.info('_sipTcpReceiver fragment (%d). App Message has more content: %d < %d (%d+%d)', fragmentNumber, len(msg), index+length, index, length);break # pending further content.
                         total, pending = msg[:index+length], msg[index+length:]
                         #logging.info('_sipTcpReceiver pending App data <![sipLocator[%s]]>\n', pending)
-                        #logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s%s]]>\n', fragmentNumber, total,pending)
+                        logging.info('_sipTcpReceiver() fragment (%d). Final sip Packet <![_sipTcpReceiver[%s%s]]>\n', fragmentNumber, total,pending)
                         return total+pending
                 else:
                     logging.warn('_sipTcpReceiver() Empty packet')
@@ -1077,7 +1099,7 @@ def _sipTcpReceiver(socket,firstSipPacket,s_addr,d_addr):
             print e
 
 #@profile 
-def initPacketCapture() : 
+def initPacketCapture(): 
     logging.info("-----------------------------------------------Server packet capture started------------------------------------------------")
     print "-----------------------------------------------Server packet capture started------------------------------------------------"
     print
@@ -1087,15 +1109,12 @@ def initPacketCapture() :
     #define ETH_P_IP    0x0800          /* Only IP Packets */
     try:
         s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(sipLocatorConfig.NETWORK_FILTER))
-
     except socket.error, msg:
         print 'initPacketCapture() Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
-        sys.exit(1)
-   
+        sys.exit(1)   
     except Exception,e:
         print e
         sys.exit(1)
-
 
     # Receive a packet
     while True:
@@ -1155,15 +1174,31 @@ def initPacketCapture() :
                     ipInfo['d_addr'] = str(d_addr)
                     ipInfo['dest_port'] = dest_port
                     
-                    logging.info('initPacketCapture() SIP TCP App packet data detected')
-                    #print 'initPacketCapture() SIP TCP App packet data detected'                
-                    sipData = _sipTcpReceiver(s,data,s_addr,d_addr)
-                    #sipData = _sipTcpReceiver(s,data)
+                    print
+                    logging.info("-------------------------------------------******initPacketCapture() SIP TCP App packet data detected------------------------------------------------------")
+                    print "-----------------------------------------------------******initPacketCapture() SIP TCP App packet data detected------------------------------------------------"
+                    logging.info("------------------------------------------------------initPacketCapture() Stack processing SIP Packet------------------------------------------------------")
+                    print "------------------------------------------------------initPacketCapture() Stack processing TCP SIP Packet------------------------------------------------------"
+                    logging.info('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))                   
+                    print 'Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr)
+                    logging.info('Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length))
+                    print 'Source Port : ' + str(source_port) + ' Dest Port : ' + str(dest_port) + ' Sequence Number : ' + str(sequence) + ' Acknowledgement : ' + str(acknowledgement) + ' TCP header length : ' + str(tcph_length)
+                   
+                    # process SIP information (Check retransmissions) - #sipData = _sipTcpReceiver(s,data)
+                    sipData = _sipTcpReceiver(s,data)                                
 
                     if sipData is not None:
-                        processSipPacket(sipData,ipInfo)
-     
-            # Add WebSockets library TODO
+                        try:
+                            thread = Thread(target=processSipPacket,args = (sipData,ipInfo,))
+                            thread.daemon = True
+                            thread.start()
+                            print 'initPacketCapture() processSipPacket'
+                        except Exception,e:
+                            logging.error("initPacketCapture Exception calling processSipPacket()" + str(e))
+                            print traceback.format_exc()
+                            print e
+
+                # Add WebSockets library TODO
                 if dest_port == sipLocatorConfig.WS_PORT:   
                     h_size = eth_length + iph_length + tcph_length * 4
                     data_size = len(packet) - h_size
@@ -1250,7 +1285,7 @@ def main():
             os.makedirs('logs')
     except OSError:
         pass
-    logging.basicConfig(filename='logs/sipLocator.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S')   
+    logging.basicConfig(filename='logs/sipLocator.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s (%(threadName)s) %(message)s', datefmt='%m/%d/%Y %I:%M:%S')   
     logging.info("-----------------------------------------------Initializing sipLocator server-----------------------------------------------")
     print "-----------------------------------------------Initializing sipLocator server-----------------------------------------------"
     try:
