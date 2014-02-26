@@ -9,12 +9,13 @@
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast,os,binascii,datetime,delorean,string,random
-from Queue import Queue #Queue encapsulates the behaviour of Condition, wait(), notify(), acquire() etc.
+#from Queue import Queue #Queue encapsulates the behaviour of Condition, wait(), notify(), acquire() etc.
 from twilio.rest import TwilioRestClient
 from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
 from time import sleep
+from logging.handlers import RotatingFileHandler
 from struct import *
 
 #from gevent import monkey, Greenlet, GreenletExit
@@ -24,14 +25,18 @@ from struct import *
 #from memory_profiler import profile
 
 sys.excepthook = lambda *args: None
+
 # Global variables
 register(sipLocatorConfig.PARSE_APPLICATION_ID, sipLocatorConfig.PARSE_REST_API_KEY)
-sipMsgQueue = Queue(sipLocatorConfig.XML_SIP_MESSAGE_LIMIT)
-sipCallQueue = Queue(sipLocatorConfig.XML_SIP_CALL_LIMIT)
+sipClfLog = logging.getLogger('sipClf.core')
 sipMessagesList     = []
 sipCallListNumber   = []
 sipClfCalls         = {}
 sipProcessedCalls   = {}
+
+
+#sipMsgQueue         =  Queue(sipLocatorConfig.XML_SIP_MESSAGE_LIMIT)
+#sipCallQueue        = Queue(sipLocatorConfig.XML_SIP_CALL_LIMIT)
 
 
 # SipMessage Object using CLF format
@@ -324,8 +329,10 @@ class sipClf(Object):
             print e
 
     def processSipMsgTransaction(self):
+        #Verify if B2BUA is enabled
         try:
-            if sipLocatorConfig.SIP_CLF_MODE_CLIENT:                  
+            if sipLocatorConfig.SIP_CLF_MODE_CLIENT:
+                #Check call is in system cached in order to determine if its originated locally or not            
                 if self.callId in sipProcessedCalls.keys() and self.callId in sipClfCalls.keys():
                     logging.info('sipClf() - processSipMsgTransaction - Call exists in system Call-ID: %s Local: (%s), Code: (%s)', self.callId,str(sipProcessedCalls.get(self.callId)),sipClfCalls.get(self.callId))
                     if sipProcessedCalls.get(self.callId) == True: #Local Call originated as client
@@ -342,6 +349,7 @@ class sipClf(Object):
                     self.serverTxn = '-'
                     self.clientTxn = '-'
             else:
+                #TODO
                 logging.info('sipClf() - processSipMsgTransaction - B2BUA Disabled')
         except Exception,e:
             self.serverTxn = '?'         # Server transaction identification code - UAS
@@ -368,28 +376,28 @@ class sipClf(Object):
         self.processSipMsgTransaction()
 
     def printSipMsgClf(self,advancedMode):
-        logging.info("------------------------------------------------------printSipMsgClf() App Processing SIP CLF message------------------------------------------------------")
-        logging.info('printSipMsgClf - Timestamp: ' + str(self.timeStamp))
-        logging.info('printSipMsgClf - Message Type: ' + self.msgType)
-        logging.info('printSipMsgClf - Directionality: ' + self.directionality)
-        logging.info('printSipMsgClf - Transport: ' + str(self.transport))
-        logging.info('printSipMsgClf - Encrypted: ' + str(self.encrypted))
-        logging.info('printSipMsgClf - CSeq-Number: ' + self.csqNumber)
-        logging.info('printSipMsgClf - CSeq-Method: ' + self.csqMethod)
-        logging.info('printSipMsgClf - R-URI: ' + self.reqUri)
-        logging.info('printSipMsgClf - Destination-address: ' + self.dstAddress)
-        logging.info('printSipMsgClf - Destination-port: ' + str(self.dstPort))
-        logging.info('printSipMsgClf - Source-address: ' + self.srcAddress)
-        logging.info('printSipMsgClf - Source-port: ' + str(self.srcPort))
-        logging.info('printSipMsgClf - To: ' + self.toUri)
-        logging.info('printSipMsgClf - To tag: ' + self.toTag)
-        logging.info('printSipMsgClf - From: ' + self.fromUri)
-        logging.info('printSipMsgClf - From tag: ' + self.fromTag)
-        logging.info('printSipMsgClf - Call-ID: ' + self.callId)
-        logging.info('printSipMsgClf - Status: ' + self.status)
+        sipClfLog.debug("------------------------------------------------------printSipMsgClf() App Processing SIP CLF message------------------------------------------------------")
+        sipClfLog.debug('printSipMsgClf - Timestamp: ' + str(self.timeStamp))
+        sipClfLog.debug('printSipMsgClf - Message Type: ' + self.msgType)
+        sipClfLog.debug('printSipMsgClf - Directionality: ' + self.directionality)
+        sipClfLog.debug('printSipMsgClf - Transport: ' + str(self.transport))
+        sipClfLog.debug('printSipMsgClf - Encrypted: ' + str(self.encrypted))
+        sipClfLog.debug('printSipMsgClf - CSeq-Number: ' + self.csqNumber)
+        sipClfLog.debug('printSipMsgClf - CSeq-Method: ' + self.csqMethod)
+        sipClfLog.debug('printSipMsgClf - R-URI: ' + self.reqUri)
+        sipClfLog.debug('printSipMsgClf - Destination-address: ' + self.dstAddress)
+        sipClfLog.debug('printSipMsgClf - Destination-port: ' + str(self.dstPort))
+        sipClfLog.debug('printSipMsgClf - Source-address: ' + self.srcAddress)
+        sipClfLog.debug('printSipMsgClf - Source-port: ' + str(self.srcPort))
+        sipClfLog.debug('printSipMsgClf - To: ' + self.toUri)
+        sipClfLog.debug('printSipMsgClf - To tag: ' + self.toTag)
+        sipClfLog.debug('printSipMsgClf - From: ' + self.fromUri)
+        sipClfLog.debug('printSipMsgClf - From tag: ' + self.fromTag)
+        sipClfLog.debug('printSipMsgClf - Call-ID: ' + self.callId)
+        sipClfLog.debug('printSipMsgClf - Status: ' + self.status)
         if advancedMode:
-            logging.info('printSipMsgClf - Server-Txn: ' + self.serverTxn)
-            logging.info('printSipMsgClf - Client-Txn: ' + self.clientTxn)
+            sipClfLog.debug('printSipMsgClf - Server-Txn: ' + self.serverTxn)
+            sipClfLog.debug('printSipMsgClf - Client-Txn: ' + self.clientTxn)
  
     def addSipHeader(self,header,value):      
         self.sipHeaderInfo.update({header: value})
@@ -763,11 +771,20 @@ def ccSipClfEngine(sipMsg):
         thread.daemon = True
         thread.start()
 #        thread.join()
-        #sipMsg.printSipMsgClf(False)
     except Exception,e:
         logging.error("ccSipClfEngine() - Exception calling processSipMsgClf()" + str(e))
         print traceback.format_exc()
         print e
+    # Print fields
+    try:
+        thread = Thread(target=sipMsg.printSipMsgClf,args = (True, ))
+        thread.daemon = True
+        thread.start()
+#        thread.join()
+    except Exception,e:
+        logging.error("ccSipClfEngine() - Exception calling printSipMsgClf()" + str(e))
+        print traceback.format_exc()
+        print e    
 
 # ccSipEngine
 # Verifies if its a new call and contacts SIP Parse to upload info
@@ -1282,26 +1299,65 @@ def initPacketCapture():
                     ipInfo['source_port'] = source_port
                     ipInfo['d_addr'] = str(d_addr)
                     ipInfo['dest_port'] = dest_port
-                    processSipPacket(data,ipInfo)
-         
+
+                    try:
+                        thread = Thread(target=processSipPacket,args = (data,ipInfo,))
+                        thread.daemon = True
+                        thread.start()
+                        print 'initPacketCapture() - processSipPacket()'
+                    except Exception,e:
+                        logging.error("initPacketCapture - Exception calling processSipPacket()" + str(e))
+                        print traceback.format_exc()
+                        print e
+
             #some other IP packet like IGMP
             else :
                 logging.error('Packet - Protocol other than TCP/UDP/ICMP')
                 print 'Packet - Protocol other than TCP/UDP/ICMP'
 
-# Main function (%(threadName)s)
+# Trace settings for SIP CLF format function (%(threadName)s)
+def traceSettings(logdir=None, scrnlog=False, txtlog=True, loglevel=logging.DEBUG):
+    try:
+        logdir = os.path.abspath(logdir)
+        if not os.path.exists(logdir):
+            os.mkdir(logdir)
+
+        log = logging.getLogger('sipClf.core')
+        log.setLevel(loglevel)
+
+        log_formatter = logging.Formatter("%(asctime)s.%(msecs).03d %(levelname)s %(message)s", datefmt='%m/%d/%Y %I:%M:%S')
+
+        if txtlog:
+            txt_handler = RotatingFileHandler(os.path.join(logdir, "sipLocatorClf.log"), backupCount=5)
+            txt_handler.doRollover()
+            txt_handler.setFormatter(log_formatter)
+            log.addHandler(txt_handler)
+            log.info("SIP Clf Logger initialized.")
+
+        if scrnlog:
+            console_handler = logging.StreamHandler()
+            console_handler.setFormatter(log_formatter)
+            log.addHandler(console_handler)
+    except Exception,e:
+        print e
+
 #@profile
 def main():
     try:
+        traceSettings('logs')
         if not os.path.exists('logs'):
             os.makedirs('logs')
     except OSError:
         pass
-    logging.basicConfig(filename='logs/sipLocator.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S')   
-    logging.info("-----------------------------------------------Initializing sipLocator server-----------------------------------------------")
-    print "-----------------------------------------------Initializing sipLocator server-----------------------------------------------"
+
     try:
+        global sipClfLog
+        sipClfLog = logging.getLogger('sipClf.core')
+        logging.basicConfig(filename='logs/sipLocator.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S')   
+        logging.info("-----------------------------------------------Initializing sipLocator server-----------------------------------------------")        
+        print "-----------------------------------------------Initializing sipLocator server-----------------------------------------------"
         initPacketCapture()
+        sipClfLog.debug('Sip CLF Engine started')
     except KeyboardInterrupt:
         logging.info ("sipLocator server stopping....")
         try:
