@@ -15,6 +15,7 @@ from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
 from time import sleep
 from logging.handlers import RotatingFileHandler
+from enum import Enum
 from struct import *
 #from Queue import Queue #Queue encapsulates the behaviour of Condition, wait(), notify(), acquire() etc.
 #from gevent import monkey, Greenlet, GreenletExit
@@ -35,6 +36,9 @@ sipTransactions     = {}
 sipClfCalls         = {}
 sipProcessedCalls   = {}
 
+############################################################################################################################################
+    # Class Definition
+############################################################################################################################################
 
 # SipTransaction Object
 class sipTransaction(Object):
@@ -59,6 +63,7 @@ class sipTransaction(Object):
     def getSipCallId(self): 
         return self.callId
 
+############################################################################################################################################
 
 # SipMessage Object using CLF format
 class sipClf(Object):
@@ -485,6 +490,8 @@ class sipClf(Object):
     def getSipMsgMethod(self):
         return self.sipMsgMethodInfo
     
+############################################################################################################################################
+
 # SipCall Object
 class sipCall(Object):
     """Create a SIP Call Object"""
@@ -520,6 +527,8 @@ class sipCall(Object):
     def getSipCallGeoPoint(self):
         return self.sipCallGeoPoint    
     
+############################################################################################################################################
+
 # SipMessage Object
 class sipMessage(Object):
     """Create a SIP Message Object"""
@@ -625,6 +634,7 @@ class sipMessage(Object):
             print traceback.format_exc()
             print e
 
+############################################################################################################################################
 
 #Generate Random code
 def generateIdCode(size=6, chars=string.ascii_uppercase + string.digits):
@@ -656,7 +666,10 @@ def findSipMsgStatus(sipMethod):
             codeRegex  = r"^SIP/2.0\s(\d{3})\s(.*)"
             statusLine = re.search(codeRegex,Message.group(0))
             if statusLine:
-                return statusLine.group(1)
+                try:                  
+                    return int(statusLine.group(1))
+                except ValueError:
+                    return -1    
             else:
                 return None
         else:
@@ -675,80 +688,94 @@ def sipStateMachine(sipMsg):
     timerD  = 32000
     timerH  = 64*timerT1
 
-    sipState = enum(INVALID=-1, INIT=0, CALLING=1, PROCEEDING=2, COMPLETED=3, TERMINATED=4 )
-    sipCallId  = sipMsg.getSipCallId()
+    sipState = {
+    'INVALID': -1,
+    'INIT': 0,
+    'CALLING': 1,
+    'PROCEEDING': 2,
+    'COMPLETED': 3,
+    'TERMINATED': 4
+    }
+
+    sipCallId  = sipMsg.getSipMsgCallId()
     sipMessage = sipMsg.getSipMsgMethod()
 
+    # sipTransactions    {}
+    # sipTransactionList []
+
     # Verify sipCallId|sipMessage is valid
-    if sipCallId == None or sipMessage == None:
+    if sipCallId == None or sipMessage == None or sipCallId == "":
+        logging.error("sipStateMachine() - Invalid SIP Message")
         return None
+    try:
+        # Create New transaction, to determine current state of the SIP Call and launch a new thread
+        if not(sipTransactions.has_key(sipCallId)):     # SipTransaction has not been processed.
+            # Create new transaction object in the System
+            logging.info("sipStateMachine() - New SIP Transaction() " + sipMessage + " " + sipCallId )
+            sipMsgTransaction = sipTransaction(sipCallId)
+            # Initial INVITE or RE-INVITE
+            if sipMessage.find('INVITE')!= -1:            
+                # Initialize timers
+                sipMsgTransaction.timerT1 = timerT1
+                sipMsgTransaction.timerA = timerT1
+                sipMsgTransaction.timerB = 64*timerT1
 
-    # Create New transaction, to determine current state of the SIP Call and launch a new thread
-    if not(sipCallId in sipTransactions[sipCallID]):     # SipTransaction has not been processed.               
-        # Create new transaction in the System
-        sipMsgTransaction = sipTransaction(sipCallID)
+                # Add SIP Transactions to list
+                sipTransactions[sipCallId] = sipState['CALLING']
+                sipTransactionsList.append(sipMsgTransaction)
 
-        # Initial INVITE or RE-INVITE
-        if sipMessage.find('INVITE')!= -1:            
-            # Initialize timers
-            sipMsgTransaction.timerT1 = timerT1
-            sipMsgTransaction.timerA = timerT1
-            sipMsgTransaction.timerB = 64*timerT1
-
-            # Add SIP Transactions to list
-            sipTransactions[sipCallId] = sipState.CALLING
-            sipTransactionsList.append(sipMsgTransaction)
-
-        elif sipMessage.find('REGISTER')!= -1:
-            sipTransactions[sipCallId] = sipState.CALLING
-            sipTransactionsList.append(sipMsgTransaction)
-        else:
-            logging.error('sipStateMachine Invalid state')
-            sipTransactions[sipCallId] = sipState.INVALID
-            sipTransactionsList.append(sipMsgTransaction)
-    else:                                               # SipTransaction has been processed.
-        # Sip state machine, obtain existing SIP Transaction
-        if sipCallId in sipTransactions[sipCallId]:
-            # SipTransaction is being processed.
-            status = findSipMsgStatus(sipMessage)
-            #STATE - CALLING:
-            if sipTransactions[sipCallId] == 1:
-                logging.info("CALLING state")
-                if status == None:
-                    sipTransactions[sipCallId] = sipState.INVALID
-                elif status >=100 and status <=199:
-                    sipTransactions[sipCallId] = sipState.PROCEEDING
-                elif status >=200 and status <=299:                    
-                    sipTransactions[sipCallId] = sipState.TERMINATED
-                elif status >=300 and status <=699:
-                    sipTransactions[sipCallId] = sipState.COMPLETED
-                else:
-                    logging.info("CALLING state - Message: " + sipMessage)
-            #STATE - PROCEEDING:
-            elif sipTransactions[sipCallId] == 2:
-                logging.info("PROCEEDING state")
-                if status == None:
-                    sipTransactions[sipCallId] = sipState.INVALID
-                elif status >=100 and status <=199:
-                    # Remains in same State
-                    sipTransactions[sipCallId] = sipState.PROCEEDING
-                elif status >=200 and status <=299:
-                    sipTransactions[sipCallId] = sipState.TERMINATED
-                elif status >=300 and status <=699:
-                    sipTransactions[sipCallId] = sipState.COMPLETED
-                else:
-                    logging.info("PROCEEDING state - Message: " + sipMessage)
-            #STATE - COMPLETED:
-            elif sipTransactions[sipCallId] == 3:
-                logging.info("COMPLETED state")
-                logging.info("Timer D started")
-
-            elif sipTransactions[sipCallId] == 4:
-                logging.info("TERMINATED state")
+            elif sipMessage.find('REGISTER')!= -1:
+                sipTransactions[sipCallId] = sipState['CALLING']
+                sipTransactionsList.append(sipMsgTransaction)
             else:
-                logging.error('sipStateMachine Invalid state')
-                sipTransactions[sipCallId] = sipState.INVALID
-                
+                logging.error('sipStateMachine() Invalid state')
+                sipTransactions[sipCallId] = sipState['INVALID']
+                sipTransactionsList.append(sipMsgTransaction)     
+        else:                                               # SipTransaction has been processed.  
+            # Sip state machine, obtain existing SIP Transaction
+            if sipTransactions.has_key(sipCallId):
+                # SipTransaction is being processed.
+                status = findSipMsgStatus(sipMessage)
+                #STATE - CALLING:
+                if sipTransactions[sipCallId] == 1:
+                    logging.info("sipStateMachine() CALLING state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    if status == None:
+                        sipTransactions[sipCallId] = sipState['INVALID']
+                    elif status >=100 and status <=199:
+                        sipTransactions[sipCallId] = sipState['PROCEEDING']
+                    elif status >=200 and status <=299:                    
+                        sipTransactions[sipCallId] = sipState['TERMINATED']
+                    elif status >=300 and status <=699:
+                        sipTransactions[sipCallId] = sipState['COMPLETED']
+                    else:
+                        logging.info("sipStateMachine() CALLING No Code state: " + sipMessage)
+                #STATE - PROCEEDING:
+                elif sipTransactions[sipCallId] == 2:
+                    logging.info("sipStateMachine() PROCEEDING state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    if status == None:
+                        sipTransactions[sipCallId] = sipState['INVALID']
+                    elif status >=100 and status <=199:
+                        # Remains in same State
+                        sipTransactions[sipCallId] = sipState['PROCEEDING']
+                    elif status >=200 and status <=299:
+                        sipTransactions[sipCallId] = sipState['TERMINATED']
+                    elif status >=300 and status <=699:
+                        sipTransactions[sipCallId] = sipState['COMPLETED']
+                    else:
+                        logging.info("sipStateMachine() PROCEEDING No Code state: " + sipMessage + " - " + sipMessage)
+                #STATE - COMPLETED:
+                elif sipTransactions[sipCallId] == 3:
+                    logging.info("sipStateMachine() COMPLETED state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    logging.info("sipStateMachine() Timer D started " + sipMessage + " " + sipCallId)
+                elif sipTransactions[sipCallId] == 4:
+                    logging.info("sipStateMachine() TERMINATED state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                else:
+                    logging.error("sipStateMachine() INVALID state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    sipTransactions[sipCallId] = sipState['INVALID']
+    except Exception,e:
+        logging.error("sipStateMachine() - Exception - " + str(e))
+        print traceback.format_exc()
+        print e         
 
 # Process WS Packet from Wire
 def processWsPacket(wsMsg,ipInfo):
@@ -766,8 +793,8 @@ def processSipPacket(sipMsg,ipInfo):
     #Remove Lines
     sipData = sipMsg.split('\r\n')
     # Create sipMessage Object for each SIP Packet received
-    newSipMessage = sipMessage()
-    newSipMessage.setSipMsgIpInfo(ipInfo)
+    sipMessageObject = sipMessage()
+    sipMessageObject.setSipMsgIpInfo(ipInfo)
 
     if sipLocatorConfig.ENABLE_SIPCLF:
         sipClfMessage = sipClf()
@@ -788,10 +815,9 @@ def processSipPacket(sipMsg,ipInfo):
                 # SIPCLF
                 if sipLocatorConfig.ENABLE_SIPCLF:
                     sipClfMessage.setSipMessage(message)
-                    logging.info("processSipPacket() - ENABLE_SIPCLF True")
+                    logging.info("processSipPacket() - SIP CLF is ENABLED")
 
-                newSipMessage.setSipMessage(message)
-                sipClfMessage.setSipMessage(message)
+                sipMessageObject.setSipMessage(message)
                 logging.info("processSipPacket() - SIP Method: " + message)
                 Message = None #Update to None
 
@@ -804,7 +830,7 @@ def processSipPacket(sipMsg,ipInfo):
                     headerKey   = Header.group(3)
                     headerValue = Header.group(4) 
                 # Add Values to Object          
-                newSipMessage.addSipHeader(headerKey,headerValue)
+                sipMessageObject.addSipHeader(headerKey,headerValue)
 
                 if sipLocatorConfig.ENABLE_SIPCLF:
                     sipClfMessage.addSipHeader(headerKey,headerValue) 
@@ -813,15 +839,15 @@ def processSipPacket(sipMsg,ipInfo):
             if SDP:
                 sdpKey = SDP.group(1)
                 sdpValue = SDP.group(2)
-                newSipMessage.addSdpInfo(sdpLine,sdpKey,sdpValue)
+                sipMessageObject.addSdpInfo(sdpLine,sdpKey,sdpValue)
                 if sipLocatorConfig.ENABLE_SIPCLF:
                     sipClfMessage.addSdpInfo(sdpLine,sdpKey,sdpValue)
                 sdpLine = sdpLine + 1
                 SDP = None #Update to None
 
-        sipStateMachine(newSipMessage)
-        ccSipEngine(newSipMessage)
-        del newSipMessage
+        sipStateMachine(sipMessageObject)
+        ccSipEngine(sipMessageObject)
+        del sipMessageObject
 
         if sipLocatorConfig.ENABLE_SIPCLF:
             ccSipClfEngine(sipClfMessage)
