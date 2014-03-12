@@ -9,7 +9,6 @@
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast,os,binascii,datetime,delorean,string,random
-#from Queue import Queue #Queue encapsulates the behaviour of Condition, wait(), notify(), acquire() etc.
 from twilio.rest import TwilioRestClient
 from parse_rest.connection import register
 from parse_rest.datatypes import Object,GeoPoint
@@ -17,7 +16,7 @@ from threading import Thread
 from time import sleep
 from logging.handlers import RotatingFileHandler
 from struct import *
-
+#from Queue import Queue #Queue encapsulates the behaviour of Condition, wait(), notify(), acquire() etc.
 #from gevent import monkey, Greenlet, GreenletExit
 #monkey.patch_socket()
 #from gevent.queue import Queue
@@ -31,12 +30,34 @@ register(sipLocatorConfig.PARSE_APPLICATION_ID, sipLocatorConfig.PARSE_REST_API_
 sipClfLog = logging.getLogger('sipClf.core')
 sipMessagesList     = []
 sipCallListNumber   = []
+sipTransactionsList = []
+sipTransactions     = {}
 sipClfCalls         = {}
 sipProcessedCalls   = {}
 
 
-#sipMsgQueue         =  Queue(sipLocatorConfig.XML_SIP_MESSAGE_LIMIT)
-#sipCallQueue        = Queue(sipLocatorConfig.XML_SIP_CALL_LIMIT)
+# SipTransaction Object
+class sipTransaction(Object):
+    """Create a SIP Transaction"""
+    def __init__(self,callId):
+        logging.info("sipTransaction() - New sipTransaction object created()")
+        print 'sipTransaction() - New sipTransaction() object created()'
+        self.callId     = callId
+        self.state      = 0
+        self.timerT1    = 500
+        self.timerA     = self.timerT1
+        self.timerB     = 64*self.timerT1
+        self.timerD     = 32000
+        self.timerH     = 64*self.timerT1
+
+    def setState(self,state):
+        self.state = state
+
+    def getState(self):
+        return self.state
+
+    def getSipCallId(self): 
+        return self.callId
 
 
 # SipMessage Object using CLF format
@@ -48,7 +69,8 @@ class sipClf(Object):
         # SIP CLF RFC 6872 http://tools.ietf.org/html/rfc6872#section-9
         self.timeStamp = ''         # Epoch time
         self.msgType = ''           # R: Request, r: response
-        self.directionality = ''    # s: message sent, r: message received
+        self.retransmissions = ''   # O: Original Transmission D: Duplicate Transmission S: Server is stateless
+        self.directionality = ''    # s: message sent, r: message received        
         self.transport = ''         # tcp, udp, tls
         self.encrypted = ''         # E: Encrypted message, U: Unencrypted message
         self.csqNumber = ''         # Cseq Number
@@ -92,6 +114,10 @@ class sipClf(Object):
             logging.error('processSipMsgType() - Unknow message Type')
             self.containsError = True
 
+    def processSipMsgRetransmission(self):
+        #TODO Add Retransmission support in Transport Layer TCP|UDP
+        self.retransmissions = 'S'
+
     def processSipMsgIpInfo(self):
         if self.sipMsgIpInfo!='' or self.sipMsgIpInfo == None:
             self.srcAddress = self.sipMsgIpInfo.get('s_addr') if validIpAddress(self.sipMsgIpInfo.get('s_addr')) else '?' 
@@ -106,13 +132,13 @@ class sipClf(Object):
         if self.sipMsgIpInfo!='' or self.sipMsgIpInfo == None:
             if self.sipMsgIpInfo.get('protocol')==6:
                 if sipLocatorConfig.ENABLE_TLS:
-                    self.transport='tls'
+                    self.transport='T'
                     self.encrypted='E'
                 else:    
-                    self.transport='tcp'
+                    self.transport='T'
                     self.encrypted='U'
             elif self.sipMsgIpInfo.get('protocol')==17:
-                self.transport='udp'
+                self.transport='U'
                 self.encrypted='U'
             else:
                 self.transport = '?'
@@ -362,6 +388,7 @@ class sipClf(Object):
     def processSipMsgClf(self):
         self.processSipMsgTimeStamp()
         self.processSipMsgType()
+        self.processSipMsgRetransmission()
         self.processSipMsgIpInfo()
         self.processSipMsgTransport()
         self.processSipMsgDirection()
@@ -376,29 +403,46 @@ class sipClf(Object):
         self.processSipMsgTransaction()
 
     def printSipMsgClf(self,advancedMode):
-        sipClfLog.debug("------------------------------------------------------printSipMsgClf() App Processing SIP CLF message------------------------------------------------------")
-        sipClfLog.debug('printSipMsgClf - Timestamp: ' + str(self.timeStamp))
-        sipClfLog.debug('printSipMsgClf - Message Type: ' + self.msgType)
-        sipClfLog.debug('printSipMsgClf - Directionality: ' + self.directionality)
-        sipClfLog.debug('printSipMsgClf - Transport: ' + str(self.transport))
-        sipClfLog.debug('printSipMsgClf - Encrypted: ' + str(self.encrypted))
-        sipClfLog.debug('printSipMsgClf - CSeq-Number: ' + self.csqNumber)
-        sipClfLog.debug('printSipMsgClf - CSeq-Method: ' + self.csqMethod)
-        sipClfLog.debug('printSipMsgClf - R-URI: ' + self.reqUri)
-        sipClfLog.debug('printSipMsgClf - Destination-address: ' + self.dstAddress)
-        sipClfLog.debug('printSipMsgClf - Destination-port: ' + str(self.dstPort))
-        sipClfLog.debug('printSipMsgClf - Source-address: ' + self.srcAddress)
-        sipClfLog.debug('printSipMsgClf - Source-port: ' + str(self.srcPort))
-        sipClfLog.debug('printSipMsgClf - To: ' + self.toUri)
-        sipClfLog.debug('printSipMsgClf - To tag: ' + self.toTag)
-        sipClfLog.debug('printSipMsgClf - From: ' + self.fromUri)
-        sipClfLog.debug('printSipMsgClf - From tag: ' + self.fromTag)
-        sipClfLog.debug('printSipMsgClf - Call-ID: ' + self.callId)
-        sipClfLog.debug('printSipMsgClf - Status: ' + self.status)
+        logging.info("------------------------------------------------------printSipMsgClf() App Processing SIP CLF message------------------------------------------------------")
+        logging.info('printSipMsgClf - Timestamp: ' + str(self.timeStamp))
+        logging.info('printSipMsgClf - Message Type: ' + self.msgType)
+        logging.info('printSipMsgClf - Directionality: ' + self.directionality)
+        logging.info('printSipMsgClf - Retransmission: ' + self.retransmissions)
+        logging.info('printSipMsgClf - Transport: ' + str(self.transport))
+        logging.info('printSipMsgClf - Encrypted: ' + str(self.encrypted))
+        logging.info('printSipMsgClf - CSeq-Number: ' + self.csqNumber)
+        logging.info('printSipMsgClf - CSeq-Method: ' + self.csqMethod)
+        logging.info('printSipMsgClf - R-URI: ' + self.reqUri)
+        logging.info('printSipMsgClf - Destination-address: ' + self.dstAddress)
+        logging.info('printSipMsgClf - Destination-port: ' + str(self.dstPort))
+        logging.info('printSipMsgClf - Source-address: ' + self.srcAddress)
+        logging.info('printSipMsgClf - Source-port: ' + str(self.srcPort))
+        logging.info('printSipMsgClf - To: ' + self.toUri)
+        logging.info('printSipMsgClf - To tag: ' + self.toTag)
+        logging.info('printSipMsgClf - From: ' + self.fromUri)
+        logging.info('printSipMsgClf - From tag: ' + self.fromTag)
+        logging.info('printSipMsgClf - Call-ID: ' + self.callId)
+        logging.info('printSipMsgClf - Status: ' + self.status)
+        logging.info('printSipMsgClf - Server-Txn: ' + self.serverTxn)
+        logging.info('printSipMsgClf - Client-Txn: ' + self.clientTxn)
         if advancedMode:
-            sipClfLog.debug('printSipMsgClf - Server-Txn: ' + self.serverTxn)
-            sipClfLog.debug('printSipMsgClf - Client-Txn: ' + self.clientTxn)
- 
+            try:
+                thread = Thread(target=self.createSipClfRecord,args = ( ))
+                thread.daemon = True
+                thread.start()
+        #       thread.join()
+            except Exception,e:
+                logging.error("sipClf() - Exception calling createSipClfRecord()" + str(e))
+                print traceback.format_exc()
+                print e
+
+    # Create SIP CLF Record
+    def createSipClfRecord(self):
+        sipClfLog.debug(str(self.timeStamp) + ' ' + self.msgType.upper() + self.retransmissions.upper() + self.directionality.upper() + str(self.transport).upper() + str(self.encrypted).upper() + ' ' +
+            self.csqNumber + ' ' + self.csqMethod + ' ' + self.reqUri + ' ' + self.dstAddress + ' ' + str(self.dstPort) + ' ' + 
+            self.srcAddress + ' '  + str(self.srcPort) + ' ' + self.toUri + ' ' + self.toTag + ' ' + self.fromUri + ' ' + 
+            self.fromTag + ' ' + self.callId + ' ' + self.status + ' ' + self.serverTxn + ' ' + self.clientTxn)
+
     def addSipHeader(self,header,value):      
         self.sipHeaderInfo.update({header: value})
 
@@ -440,7 +484,7 @@ class sipClf(Object):
   
     def getSipMsgMethod(self):
         return self.sipMsgMethodInfo
- 
+    
 # SipCall Object
 class sipCall(Object):
     """Create a SIP Call Object"""
@@ -581,7 +625,8 @@ class sipMessage(Object):
             print traceback.format_exc()
             print e
 
-#Generate Randome code
+
+#Generate Random code
 def generateIdCode(size=6, chars=string.ascii_uppercase + string.digits):
         return ''.join(random.choice(chars) for x in range(size))
 
@@ -602,6 +647,109 @@ def processGeoLocation(srcIP):
         print traceback.format_exc()
         logging.error('processGeoLocation() - Exception - ' + str(e))
 
+
+# Obtain Message Status
+def findSipMsgStatus(sipMethod):
+    try:
+        Message = re.search(r'(\w+\s+sip:.*)|(^SIP/2.0\s.*)', sipMethod)
+        if Message:
+            codeRegex  = r"^SIP/2.0\s(\d{3})\s(.*)"
+            statusLine = re.search(codeRegex,Message.group(0))
+            if statusLine:
+                return statusLine.group(1)
+            else:
+                return None
+        else:
+            return -1
+    except Exception,e:
+        return None
+        print traceback.format_exc()
+        print e
+
+
+# SIP State Machine implementation
+def sipStateMachine(sipMsg):
+    timerT1 = 500
+    timerA  = timerT1
+    timerB  = 64*timerT1
+    timerD  = 32000
+    timerH  = 64*timerT1
+
+    sipState = enum(INVALID=-1, INIT=0, CALLING=1, PROCEEDING=2, COMPLETED=3, TERMINATED=4 )
+    sipCallId  = sipMsg.getSipCallId()
+    sipMessage = sipMsg.getSipMsgMethod()
+
+    # Verify sipCallId|sipMessage is valid
+    if sipCallId == None or sipMessage == None:
+        return None
+
+    # Create New transaction, to determine current state of the SIP Call and launch a new thread
+    if not(sipCallId in sipTransactions[sipCallID]):     # SipTransaction has not been processed.               
+        # Create new transaction in the System
+        sipMsgTransaction = sipTransaction(sipCallID)
+
+        # Initial INVITE or RE-INVITE
+        if sipMessage.find('INVITE')!= -1:            
+            # Initialize timers
+            sipMsgTransaction.timerT1 = timerT1
+            sipMsgTransaction.timerA = timerT1
+            sipMsgTransaction.timerB = 64*timerT1
+
+            # Add SIP Transactions to list
+            sipTransactions[sipCallId] = sipState.CALLING
+            sipTransactionsList.append(sipMsgTransaction)
+
+        elif sipMessage.find('REGISTER')!= -1:
+            sipTransactions[sipCallId] = sipState.CALLING
+            sipTransactionsList.append(sipMsgTransaction)
+        else:
+            logging.error('sipStateMachine Invalid state')
+            sipTransactions[sipCallId] = sipState.INVALID
+            sipTransactionsList.append(sipMsgTransaction)
+    else:                                               # SipTransaction has been processed.
+        # Sip state machine, obtain existing SIP Transaction
+        if sipCallId in sipTransactions[sipCallId]:
+            # SipTransaction is being processed.
+            status = findSipMsgStatus(sipMessage)
+            #STATE - CALLING:
+            if sipTransactions[sipCallId] == 1:
+                logging.info("CALLING state")
+                if status == None:
+                    sipTransactions[sipCallId] = sipState.INVALID
+                elif status >=100 and status <=199:
+                    sipTransactions[sipCallId] = sipState.PROCEEDING
+                elif status >=200 and status <=299:                    
+                    sipTransactions[sipCallId] = sipState.TERMINATED
+                elif status >=300 and status <=699:
+                    sipTransactions[sipCallId] = sipState.COMPLETED
+                else:
+                    logging.info("CALLING state - Message: " + sipMessage)
+            #STATE - PROCEEDING:
+            elif sipTransactions[sipCallId] == 2:
+                logging.info("PROCEEDING state")
+                if status == None:
+                    sipTransactions[sipCallId] = sipState.INVALID
+                elif status >=100 and status <=199:
+                    # Remains in same State
+                    sipTransactions[sipCallId] = sipState.PROCEEDING
+                elif status >=200 and status <=299:
+                    sipTransactions[sipCallId] = sipState.TERMINATED
+                elif status >=300 and status <=699:
+                    sipTransactions[sipCallId] = sipState.COMPLETED
+                else:
+                    logging.info("PROCEEDING state - Message: " + sipMessage)
+            #STATE - COMPLETED:
+            elif sipTransactions[sipCallId] == 3:
+                logging.info("COMPLETED state")
+                logging.info("Timer D started")
+
+            elif sipTransactions[sipCallId] == 4:
+                logging.info("TERMINATED state")
+            else:
+                logging.error('sipStateMachine Invalid state')
+                sipTransactions[sipCallId] = sipState.INVALID
+                
+
 # Process WS Packet from Wire
 def processWsPacket(wsMsg,ipInfo):
     logging.info("------------------------------------------------------Processing WS message------------------------------------------------------")
@@ -609,7 +757,7 @@ def processWsPacket(wsMsg,ipInfo):
     wsData = wsMsg.split('\r\n')
     print wsData
 
-# Process SIP Packet from Wire
+# Process SIP Packet from Wire, once packet has been received completely (Include TCP Fragmentation)
 #@profile
 def processSipPacket(sipMsg,ipInfo):
     logging.info("------------------------------------------------------processSipPacket() App Processing SIP message------------------------------------------------------")
@@ -671,6 +819,7 @@ def processSipPacket(sipMsg,ipInfo):
                 sdpLine = sdpLine + 1
                 SDP = None #Update to None
 
+        sipStateMachine(newSipMessage)
         ccSipEngine(newSipMessage)
         del newSipMessage
 
@@ -770,21 +919,23 @@ def ccSipClfEngine(sipMsg):
         thread = Thread(target=sipMsg.processSipMsgClf,args = ( ))
         thread.daemon = True
         thread.start()
-#        thread.join()
+#       thread.join()
     except Exception,e:
         logging.error("ccSipClfEngine() - Exception calling processSipMsgClf()" + str(e))
         print traceback.format_exc()
         print e
+
     # Print fields
-    try:
-        thread = Thread(target=sipMsg.printSipMsgClf,args = (True, ))
-        thread.daemon = True
-        thread.start()
-#        thread.join()
-    except Exception,e:
-        logging.error("ccSipClfEngine() - Exception calling printSipMsgClf()" + str(e))
-        print traceback.format_exc()
-        print e    
+    if sipLocatorConfig.SIP_CLF_DEBUG:    
+        try:
+            thread = Thread(target=sipMsg.printSipMsgClf,args = (True, )) # <--- True Create SIP CLF Record
+            thread.daemon = True
+            thread.start()
+    #        thread.join()
+        except Exception,e:
+            logging.error("ccSipClfEngine() - Exception calling printSipMsgClf()" + str(e))
+            print traceback.format_exc()
+            print e
 
 # ccSipEngine
 # Verifies if its a new call and contacts SIP Parse to upload info
@@ -795,7 +946,7 @@ def ccSipEngine(sipMsg):
     sipMsg.processSipMsgSdp()
     # Update SIP Msg object with CallID
     sipMsg.processSipMsgCallId()
-    # Insert Local Array
+    # Insert sipMsg to Local Array
     sipMessagesList.append(sipMsg)
 
     #Store SIP Message in Parse
@@ -814,6 +965,7 @@ def ccSipEngine(sipMsg):
  
     sipMessage = sipMsg.getSipMsgMethod()
     sipCallID  = sipMsg.getSipMsgCallId()
+
 
     #SIP Message INVITE found - New call
     if sipMessage.find('INVITE')!= -1:
@@ -1204,8 +1356,6 @@ def initPacketCapture():
                     ipInfo['dest_port'] = dest_port
                     
                     print
-                    logging.info("-------------------------------------------******initPacketCapture() SIP TCP App packet data detected------------------------------------------------------")
-                    print "-----------------------------------------------------******initPacketCapture() SIP TCP App packet data detected------------------------------------------------"
                     logging.info("------------------------------------------------------initPacketCapture() Stack processing SIP Packet------------------------------------------------------")
                     print "------------------------------------------------------initPacketCapture() Stack processing TCP SIP Packet------------------------------------------------------"
                     logging.info('Version : ' + str(version) + ' IP Header Length : ' + str(ihl) + ' TTL : ' + str(ttl) + ' Protocol : ' + str(protocol) + ' Source Address : ' + str(s_addr) + ' Destination Address : ' + str(d_addr))                   
@@ -1328,7 +1478,7 @@ def traceSettings(logdir=None, scrnlog=False, txtlog=True, loglevel=logging.DEBU
         log_formatter = logging.Formatter("%(asctime)s.%(msecs).03d %(levelname)s %(message)s", datefmt='%m/%d/%Y %I:%M:%S')
 
         if txtlog:
-            txt_handler = RotatingFileHandler(os.path.join(logdir, "sipLocatorClf.log"), backupCount=5)
+            txt_handler = RotatingFileHandler(os.path.join(logdir, "sipClfRecord.log"), backupCount=5)
             txt_handler.doRollover()
             txt_handler.setFormatter(log_formatter)
             log.addHandler(txt_handler)
