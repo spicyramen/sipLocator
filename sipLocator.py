@@ -32,6 +32,7 @@ sipClfLog = logging.getLogger('sipClf.core')
 sipMessagesList     = []
 sipCallListNumber   = []
 sipTransactionsList = []
+sipTransactionsRegList = []
 sipTransactions     = {}
 sipClfCalls         = {}
 sipProcessedCalls   = {}
@@ -700,9 +701,6 @@ def sipStateMachine(sipMsg):
     sipCallId  = sipMsg.getSipMsgCallId()
     sipMessage = sipMsg.getSipMsgMethod()
 
-    # sipTransactions    {}
-    # sipTransactionList []
-
     # Verify sipCallId|sipMessage is valid
     if sipCallId == None or sipMessage == None or sipCallId == "":
         logging.error("sipStateMachine() - Invalid SIP Message")
@@ -719,7 +717,6 @@ def sipStateMachine(sipMsg):
                 sipMsgTransaction.timerT1 = timerT1
                 sipMsgTransaction.timerA = timerT1
                 sipMsgTransaction.timerB = 64*timerT1
-
                 # Add SIP Transactions to list
                 sipTransactions[sipCallId] = sipState['CALLING']
                 sipTransactionsList.append(sipMsgTransaction)
@@ -727,8 +724,13 @@ def sipStateMachine(sipMsg):
             elif sipMessage.find('REGISTER')!= -1:
                 sipTransactions[sipCallId] = sipState['CALLING']
                 sipTransactionsList.append(sipMsgTransaction)
+
+            elif sipMessage.find('OPTIONS')!= -1:
+                sipTransactions[sipCallId] = sipState['CALLING']
+                sipTransactionsList.append(sipMsgTransaction)                    
+
             else:
-                logging.error('sipStateMachine() Invalid state')
+                logging.error('sipStateMachine() INVALID state: ' + sipMessage + " " + sipCallId)
                 sipTransactions[sipCallId] = sipState['INVALID']
                 sipTransactionsList.append(sipMsgTransaction)     
         else:                                               # SipTransaction has been processed.  
@@ -772,6 +774,10 @@ def sipStateMachine(sipMsg):
                 else:
                     logging.error("sipStateMachine() INVALID state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                     sipTransactions[sipCallId] = sipState['INVALID']
+            else:
+                logging.error("sipStateMachine() INVALID state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                sipTransactions[sipCallId] = sipState['INVALID']
+
     except Exception,e:
         logging.error("sipStateMachine() - Exception - " + str(e))
         print traceback.format_exc()
@@ -1494,17 +1500,18 @@ def initPacketCapture():
 # Trace settings for SIP CLF format function (%(threadName)s)
 def traceSettings(logdir=None, scrnlog=False, txtlog=True, loglevel=logging.DEBUG):
     try:
-        logdir = os.path.abspath(logdir)
+        #logdir = os.path.abspath(logdir)
         if not os.path.exists(logdir):
-            os.mkdir(logdir)
+            os.makedirs(logdir)
+
+        if sipLocatorConfig.CLF_LOG_FILENAME == "" or sipLocatorConfig.CLF_LOG_FILENAME == None:
+            sipLocatorConfig.CLF_LOG_FILENAME = "sipClf.log"
 
         log = logging.getLogger('sipClf.core')
         log.setLevel(loglevel)
-
         log_formatter = logging.Formatter("%(asctime)s.%(msecs).03d %(levelname)s %(message)s", datefmt='%m/%d/%Y %I:%M:%S')
-
         if txtlog:
-            txt_handler = RotatingFileHandler(os.path.join(logdir, "sipClfRecord.log"), backupCount=5)
+            txt_handler = RotatingFileHandler(os.path.join(logdir, sipLocatorConfig.CLF_LOG_FILENAME), backupCount=5, maxBytes=1024*1024*10)
             txt_handler.doRollover()
             txt_handler.setFormatter(log_formatter)
             log.addHandler(txt_handler)
@@ -1514,13 +1521,15 @@ def traceSettings(logdir=None, scrnlog=False, txtlog=True, loglevel=logging.DEBU
             console_handler = logging.StreamHandler()
             console_handler.setFormatter(log_formatter)
             log.addHandler(console_handler)
+    except OSError:
+        pass   
     except Exception,e:
         print e
 
 #@profile
 def main():
     try:
-        traceSettings('logs')
+        traceSettings('logs/clf/')
         if not os.path.exists('logs'):
             os.makedirs('logs')
     except OSError:
@@ -1529,7 +1538,10 @@ def main():
     try:
         global sipClfLog
         sipClfLog = logging.getLogger('sipClf.core')
-        logging.basicConfig(filename='logs/sipLocator.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S')   
+        if sipLocatorConfig.LOG_FILENAME == "" or sipLocatorConfig.LOG_FILENAME == None:
+            sipLocatorConfig.LOG_FILENAME = "logs/sipLocator.log"
+
+        logging.basicConfig(filename=sipLocatorConfig.LOG_FILENAME, level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S')
         logging.info("-----------------------------------------------Initializing sipLocator server-----------------------------------------------")        
         print "-----------------------------------------------Initializing sipLocator server-----------------------------------------------"
         initPacketCapture()
