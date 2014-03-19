@@ -25,8 +25,8 @@ Installation:
 
 2) If you want to send information to parse.com
   pip install git+https://github.com/dgrtwo/ParsePy.git
-	a)  Change sipLocatorConfig to:
 
+	a)  Change sipLocatorConfig to:
 		ENABLE_PARSE=True
 
 3) If you want to receive SMS Notifications install twilio library
@@ -39,11 +39,13 @@ Installation:
 		ENABLE_SIPCLF = True
 
 5) Run:
-	 python sipLocator.py
+	 python sipLocator.py &
 
 
 sipLocator XML-RPC server
 ----------------------------
+Allows to process new SIP information locally
+
 1) Edit sipLocatorConfig.py
 
         XML_GEO_LOCATION
