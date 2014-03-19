@@ -9,14 +9,13 @@
 '''
 import sipLocatorConfig
 import socket,sys,logging,traceback,re,urllib,ast,os,binascii,datetime,delorean,string,random
-from twilio.rest import TwilioRestClient
-from parse_rest.connection import register
-from parse_rest.datatypes import Object,GeoPoint
 from threading import Thread
 from time import sleep
 from logging.handlers import RotatingFileHandler
-from enum import Enum
 from struct import *
+from twilio.rest import TwilioRestClient
+from parse_rest.connection import register
+from parse_rest.datatypes import Object,GeoPoint
 #from Queue import Queue #Queue encapsulates the behaviour of Condition, wait(), notify(), acquire() etc.
 #from gevent import monkey, Greenlet, GreenletExit
 #monkey.patch_socket()
@@ -98,9 +97,61 @@ class sipClf(Object):
         self.sipMsgIpInfo = ''      # Store IP information
         self.sipHeaderInfo    = {}  # Store SIP Header Info
         self.sipMsgSdpInfo    = {}  # Store SIP SDP contents
-        self.sipMsgMethodInfo = ''  # Store SIP Mthod info
+        self.sipMsgMethodInfo = ''  # Store SIP Method info
+        self.sipMsgSdpClfLine = ''
+        self.hasSDP           = False
         self.containsError    = False
 
+
+    def addSdpInfo(self,sdpLineNumber,sdpKey,sdpValue):      
+        sdpLine = sdpKey + '=' + sdpValue
+        self.sipMsgSdpInfo.update({sdpLineNumber: sdpLine})
+        #logging.info(sdpKey + '=' + sdpValue)
+
+    def addSipHeader(self,header,value):      
+        self.sipHeaderInfo.update({header: value})
+
+    def addSdpInfo(self,sdpLineNumber,sdpKey,sdpValue):
+        sdpLine = sdpKey + '=' + sdpValue
+        self.sipMsgSdpInfo.update({sdpLineNumber: sdpLine})
+
+    def getSipHeaders(self):
+        return self.sipHeaderInfo
+
+    def setSipMsgTimeStamp(self,timeStamp):
+        self.timeStamp = timeStamp
+
+    def getSipMsgTimeStamp(self):
+        return self.timeStamp
+
+    def setSipMsgIpInfo(self,ipInfo):
+        self.sipMsgIpInfo = ipInfo
+
+    def getSipMsgIpInfo(self):
+        return self.sipMsgIpInfo
+
+    def setSipMsgTransport(self,transport):
+        self.transport = transport
+
+    def getSipMsgTransport(self):
+        return self.transport
+
+    def setSipMsgType(self,msgType):
+        self.msgType = msgType
+
+    def getSipMsgType(self):
+        return self.msgType
+
+    def setSipMessage(self,msg):
+        self.sipMsgMethodInfo = msg
+  
+    def getSipMsgMethod(self):
+        return self.sipMsgMethodInfo
+
+    ##########################################
+    # * Process SIP Msg contents
+    ##########################################
+    
     def processSipMsgTimeStamp(self):
         dt = datetime.datetime.utcnow()
         self.timeStamp = delorean.Delorean(dt, timezone="UTC").epoch()
@@ -137,7 +188,7 @@ class sipClf(Object):
     def processSipMsgTransport(self):
         if self.sipMsgIpInfo!='' or self.sipMsgIpInfo == None:
             if self.sipMsgIpInfo.get('protocol')==6:
-                if sipLocatorConfig.ENABLE_TLS:
+                if sipLocatorConfig.ENABLE_TLS: #TODO
                     self.transport='T'
                     self.encrypted='E'
                 else:    
@@ -391,6 +442,34 @@ class sipClf(Object):
             print traceback.format_exc()
             print e
 
+    def processSipMsgSdp(self):
+        try:
+            sipMsgContainsMedia = self.sipHeaderInfo['Content-Type:']
+            if sipMsgContainsMedia is not None:
+                if sipMsgContainsMedia.find('application/sdp')!=-1:
+                    self.hasSDP = True
+            else:
+                # No SDP  
+                self.hasSDP = False
+        # Not all SIP Message contain SDP nor Content-Type        
+        except KeyError:    
+            pass    
+        except Exception,e:
+            logging.error("processSipMsgSdp() - Unable to process processSipMsgSdp()")
+            print traceback.format_exc()
+            print e
+
+    def processSipMsgSdpInfo(self):
+        try:
+            if self.hasSDP:
+                for sdpLine in self.sipMsgSdpInfo.itervalues():
+                    self.sipMsgSdpClfLine = self.sipMsgSdpClfLine + ' ' + sdpLine
+        except Exception,e:
+            logging.error('processSipMsgSdpInfo() - Exception - ' + str(e))
+            print traceback.format_exc()
+            print e
+
+ 
     def processSipMsgClf(self):
         self.processSipMsgTimeStamp()
         self.processSipMsgType()
@@ -407,6 +486,9 @@ class sipClf(Object):
         self.processSipMsgReqUri()
         self.processSipMsgStatusCode()
         self.processSipMsgTransaction()
+        self.processSipMsgSdp()
+        self.processSipMsgSdpInfo()
+
 
     def printSipMsgClf(self,advancedMode):
         logging.info("------------------------------------------------------printSipMsgClf() App Processing SIP CLF message------------------------------------------------------")
@@ -431,6 +513,7 @@ class sipClf(Object):
         logging.info('printSipMsgClf - Status: ' + self.status)
         logging.info('printSipMsgClf - Server-Txn: ' + self.serverTxn)
         logging.info('printSipMsgClf - Client-Txn: ' + self.clientTxn)
+
         if advancedMode:
             try:
                 thread = Thread(target=self.createSipClfRecord,args = ( ))
@@ -448,48 +531,6 @@ class sipClf(Object):
             self.csqNumber + ' ' + self.csqMethod + ' ' + self.reqUri + ' ' + self.dstAddress + ' ' + str(self.dstPort) + ' ' + 
             self.srcAddress + ' '  + str(self.srcPort) + ' ' + self.toUri + ' ' + self.toTag + ' ' + self.fromUri + ' ' + 
             self.fromTag + ' ' + self.callId + ' ' + self.status + ' ' + self.serverTxn + ' ' + self.clientTxn)
-
-    def addSipHeader(self,header,value):      
-        self.sipHeaderInfo.update({header: value})
-
-    def addSdpInfo(self,sdpLineNumber,sdpKey,sdpValue):      
-        #self.sipMsgSdpInfo.update({sdpKey: sdpValue})
-        #self.sipMsgSdpInfo.append(sdpKey + '=' + sdpValue)
-        sdpLine = sdpKey + '=' + sdpValue
-        self.sipMsgSdpInfo.update({sdpLineNumber: sdpLine})
-
-    def getSipHeaders(self):
-        return self.sipHeaderInfo
-
-    def setSipMsgTimeStamp(self,timeStamp):
-        self.timeStamp = timeStamp
-
-    def getSipMsgTimeStamp(self):
-        return self.timeStamp
-
-    def setSipMsgIpInfo(self,ipInfo):
-        self.sipMsgIpInfo = ipInfo
-
-    def getSipMsgIpInfo(self):
-        return self.sipMsgIpInfo
-
-    def setSipMsgTransport(self,transport):
-        self.transport = transport
-
-    def getSipMsgTransport(self):
-        return self.transport
-
-    def setSipMsgType(self,msgType):
-        self.msgType = msgType
-
-    def getSipMsgType(self):
-        return self.msgType
-
-    def setSipMessage(self,msg):
-        self.sipMsgMethodInfo = msg
-  
-    def getSipMsgMethod(self):
-        return self.sipMsgMethodInfo
     
 ############################################################################################################################################
 
@@ -635,6 +676,7 @@ class sipMessage(Object):
             print traceback.format_exc()
             print e
 
+
 ############################################################################################################################################
 
 #Generate Random code
@@ -681,7 +723,13 @@ def findSipMsgStatus(sipMethod):
         print e
 
 
-# SIP State Machine implementation
+############################################################################################################################################
+# Handle SIP Timers via threads
+
+
+############################################################################################################################################
+
+# SIP FSM State Machine implementation
 def sipStateMachine(sipMsg):
     timerT1 = 500
     timerA  = timerT1
@@ -722,6 +770,14 @@ def sipStateMachine(sipMsg):
                 sipTransactionsList.append(sipMsgTransaction)
 
             elif sipMessage.find('REGISTER')!= -1:
+                sipTransactions[sipCallId] = sipState['CALLING']
+                sipTransactionsList.append(sipMsgTransaction)
+
+            elif sipMessage.find('SUBSCRIBE')!= -1:
+                sipTransactions[sipCallId] = sipState['CALLING']
+                sipTransactionsList.append(sipMsgTransaction)
+
+            elif sipMessage.find('NOTIFY')!= -1:
                 sipTransactions[sipCallId] = sipState['CALLING']
                 sipTransactionsList.append(sipMsgTransaction)
 
@@ -769,8 +825,10 @@ def sipStateMachine(sipMsg):
                 elif sipTransactions[sipCallId] == 3:
                     logging.info("sipStateMachine() COMPLETED state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                     logging.info("sipStateMachine() Timer D started " + sipMessage + " " + sipCallId)
+                #STATE - TERMINATED:
                 elif sipTransactions[sipCallId] == 4:
                     logging.info("sipStateMachine() TERMINATED state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                #STATE - INVALID:
                 else:
                     logging.error("sipStateMachine() INVALID state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                     sipTransactions[sipCallId] = sipState['INVALID']
@@ -977,6 +1035,7 @@ def ccSipEngine(sipMsg):
     # Check if sipMsg contains SDP
     sipMsg.processSipMsgSdp()
     # Update SIP Msg object with CallID
+
     sipMsg.processSipMsgCallId()
     # Insert sipMsg to Local Array
     sipMessagesList.append(sipMsg)
