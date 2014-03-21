@@ -455,7 +455,7 @@ class sipClf(Object):
         except KeyError:    
             pass    
         except Exception,e:
-            logging.error("processSipMsgSdp() - Unable to process processSipMsgSdp()")
+            logging.error("processSipMsgSdp() - - Exception -  " + str(e))
             print traceback.format_exc()
             print e
 
@@ -619,11 +619,8 @@ class sipMessage(Object):
     def addSipHeader(self,header,value):      
         self.sipHeaderInfo.update({header: value})
         #logging.info(header + ' ' + value)
-        #print 'sipMessage() addHeader ' + 'Header: ' + header + ' Value: ' + value
 
     def addSdpInfo(self,sdpLineNumber,sdpKey,sdpValue):      
-        #self.sipMsgSdpInfo.update({sdpKey: sdpValue})
-        #self.sipMsgSdpInfo.append(sdpKey + '=' + sdpValue)
         sdpLine = sdpKey + '=' + sdpValue
         self.sipMsgSdpInfo.update({sdpLineNumber: sdpLine})
         #logging.info(sdpKey + '=' + sdpValue)

@@ -1,0 +1,1235 @@
+03/21/2014 07:27:06.231 INFO -----------------------------------------------Initializing sipLocator XML server-----------------------------------------------
+03/21/2014 07:27:06.232 INFO -----------------------------------------------XML-RPC Request Handler Server starting------------------------------------------------
+03/21/2014 07:27:06.232 INFO XML-RPC Hostname: 172.31.46.56 Port: 8081
+03/21/2014 07:27:06.232 INFO XML-RPC API Version:  1.0.1
+03/21/2014 07:27:06.232 INFO -----------------------------------------------XML-RPC Request started------------------------------------------------
+03/21/2014 07:27:10.049 INFO Client IP: 172.31.46.56 - Port: 40735
+03/21/2014 07:27:10.049 INFO Client request: 
+<?xml version='1.0' encoding='UTF-8'?>
+<methodCall>
+<methodName>ping</methodName>
+<params>
+<param>
+<value><string>request</string></value>
+</param>
+</params>
+</methodCall>
+
+
+03/21/2014 07:27:10.050 INFO pingMethod() API ping
+03/21/2014 07:27:10.050 INFO Server response: 
+<?xml version='1.0'?>
+<methodResponse>
+<params>
+<param>
+<value><string>reply</string></value>
+</param>
+</params>
+</methodResponse>
+
+
+03/21/2014 07:27:10.075 INFO Client IP: 172.31.46.56 - Port: 40736
+03/21/2014 07:27:10.076 INFO Client request: 
+<?xml version='1.0' encoding='UTF-8'?>
+<methodCall>
+<methodName>get.sipcall</methodName>
+<params>
+<param>
+<value><struct>
+<member>
+<name>authenticationPassword</name>
+<value><string>1qaz2wsx</string></value>
+</member>
+<member>
+<name>sipCallID</name>
+<value><string>CXC-298-667eda48-ca90d13f-13c4-532bbe16-7343649c-5b47055e</string></value>
+</member>
+<member>
+<name>authenticationUser</name>
+<value><string>sut</string></value>
+</member>
+</struct></value>
+</param>
+</params>
+</methodCall>
+
+
+03/21/2014 07:27:10.076 INFO getSipCall() API get.sipcall
+03/21/2014 07:27:10.501 INFO sipCall() New sipCall object created()
+03/21/2014 07:27:10.509 INFO getSipCallFromParse() Found call online!
+03/21/2014 07:27:10.509 INFO CXC-298-667eda48-ca90d13f-13c4-532bbe16-7343649c-5b47055e
+03/21/2014 07:27:10.509 INFO <parse_rest.datatypes.GeoPoint object at 0x1906350>
+03/21/2014 07:27:10.509 INFO {u'city': u'', u'region_code': u'', u'region_name': u'', u'ip': u'63.209.144.201', u'area_code': u'', u'zipcode': u'', u'longitude': -97, u'metro_code': u'', u'latitude': 38, u'country_code': u'US', u'country_name': u'United States'}
+03/21/2014 07:27:10.509 INFO [u'CXC-298-667eda48-ca90d13f-13c4-532bbe16-7343649c-5b47055e', <parse_rest.datatypes.GeoPoint object at 0x1906350>]
+03/21/2014 07:27:10.510 INFO {'sipCallGeoPoint': <parse_rest.datatypes.GeoPoint object at 0x1906350>, 'sipCallID': u'CXC-298-667eda48-ca90d13f-13c4-532bbe16-7343649c-5b47055e'}
+03/21/2014 07:27:10.510 INFO Server response: 
+<?xml version='1.0'?>
+<methodResponse>
+<params>
+<param>
+<value><struct>
+<member>
+<name>sipCallGeoPoint</name>
+<value><struct>
+<member>
+<name>latitude</name>
+<value><double>38.0</double></value>
+</member>
+<member>
+<name>longitude</name>
+<value><double>-97.0</double></value>
+</member>
+</struct></value>
+</member>
+<member>
+<name>sipCallID</name>
+<value><string>CXC-298-667eda48-ca90d13f-13c4-532bbe16-7343649c-5b47055e</string></value>
+</member>
+</struct></value>
+</param>
+</params>
+</methodResponse>
+
+
+03/21/2014 07:27:10.515 INFO Client IP: 172.31.46.56 - Port: 40738
+03/21/2014 07:27:10.515 INFO Client request: 
+<?xml version='1.0' encoding='UTF-8'?>
+<methodCall>
+<methodName>get.sipmessage</methodName>
+<params>
+<param>
+<value><struct>
+<member>
+<name>hasSDP</name>
+<value><boolean>1</boolean></value>
+</member>
+<member>
+<name>sipMsgCallID</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+<member>
+<name>authenticationPassword</name>
+<value><string>1qaz2wsx</string></value>
+</member>
+<member>
+<name>authenticationUser</name>
+<value><string>sut</string></value>
+</member>
+</struct></value>
+</param>
+</params>
+</methodCall>
+
+
+03/21/2014 07:27:10.516 INFO getSipMessage() API get.sipmessage
+03/21/2014 07:27:11.401 INFO getSipMessageFromParse() SIP Messages found in Parse (11) API get.sipmessage
+03/21/2014 07:27:12.368 INFO processSipXmlParameters() Processing SIP Messages found API get.sipmessage
+03/21/2014 07:27:12.928 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.929 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.929 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.930 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.930 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.930 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.931 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.931 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.931 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.932 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.932 INFO sipMessage() __init__ sipMessage
+03/21/2014 07:27:12.932 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: True
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: False
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: False
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: True
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: False
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: True
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: True
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: False
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: False
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: False
+03/21/2014 07:27:12.933 INFO processSipXmlParameters() Processing SIP Message found API get.sipmessage: False
+03/21/2014 07:27:12.933 INFO [{'sipMsgMethodInfo': u'INVITE sip:18888411668**1233211@vmr.att.com SIP/2.0', 'sipMsgSdpInfo': {u'56': u'a=pcfg:4 t=4 a=5,6', u'54': u'a=pcfg:2 t=2 a=1,2,4|3', u'42': u'a=rtcp-fb:* goog-remb', u'48': u'a=rtpmap:105 H264/90000', u'43': u'a=rtpmap:100 VP8/90000', u'60': u'a=ssrc:1093794301 cname:0c28747c5b4373ad01728c14a56f0cc7', u'61': u'a=ssrc:1093794301 mslabel:6994f7d1-6ce9-4fbd-acfd-84e5131ca2e2', u'62': u'a=ssrc:1093794301 label:doubango@video', u'63': u'a=ice-ufrag:g5t3K6PoNWiFMYn', u'64': u'a=ice-pwd:BKbFUMBPLuRd2XZVUHBKh', u'49': u'a=imageattr:105 recv [x=[128:16:1280],y=[96:16:720]] send [x=[128:16:1280],y=[96:16:720]]', u'66': u'a=candidate:Z0lW4m6he 2 udp 2130706430 172.31.32.194 40283 typ host', u'67': u'a=candidate:srflxZ0lW 2 udp 1694498814 54.200.206.176 40283 typ srflx raddr 172.31.32.194 rport 40283', u'68': u'a=candidate:srflxZ0lW 1 udp 1694498815 54.200.206.176 40282 typ srflx raddr 172.31.32.194 rport 40282', u'52': u'a=acap:6 crypto:2 AES_CM_128_HMAC_SHA1_32 inline:pP+w+dEsT3Y6SaC7JnNo2GgAyQHlNeXQiOcWl/q9', u'53': u'a=pcfg:1 t=1 a=1,2,4|3', u'24': u'a=pcfg:3 t=3 a=5,6', u'25': u'a=pcfg:4 t=4 a=5,6', u'26': u'a=pcfg:5 t=5', u'27': u'a=sendrecv', u'20': u'a=acap:5 crypto:1 AES_CM_128_HMAC_SHA1_80 inline:jLevAkZSNf1P3GtJ1KPzPslLyb2frR3xu0vRYgAx', u'21': u'a=acap:6 crypto:2 AES_CM_128_HMAC_SHA1_32 inline:zCuC+pQ/CY28u1E/uw9crm0nq5Zw/wL+0xiapUXV', u'22': u'a=pcfg:1 t=1 a=1,2,4|3', u'23': u'a=pcfg:2 t=2 a=1,2,4|3', u'46': u'a=imageattr:104 recv [x=[128:16:1280],y=[96:16:720]] send [x=[128:16:1280],y=[96:16:720]]', u'47': u'a=fmtp:104 profile-level-id=42001f; packetization-mode=1; impl=FFMPEG', u'44': u'a=imageattr:100 recv [x=[128:16:1280],y=[96:16:720]] send [x=[128:16:1280],y=[96:16:720]]', u'45': u'a=rtpmap:104 H264/90000', u'28': u'a=rtcp-mux', u'29': u'a=ssrc:2055419322 cname:e03a0438144abc917e89c640ef9b91cd', u'40': u'a=rtcp-fb:* ccm fir', u'41': u'a=rtcp-fb:* nack', u'1': u'v=0', u'3': u's=-', u'2': u'o=doubango 1983 678901 IN IP4 172.31.32.194', u'5': u't=0 0', u'4': u'c=IN IP4 172.31.32.194', u'7': u'a=acap:2 connection:new', u'6': u'a=acap:1 setup:passive', u'9': u'a=acap:4 fingerprint:sha-1 51:25:1B:78:B4:3F:13:09:2E:24:0F:1C:6B:26:50:BC:B3:13:8E:45', u'8': u'a=acap:3 fingerprint:sha-256 E6:93:08:07:E3:E7:FD:26:CB:2F:A2:AE:F7:50:F5:8D:72:BA:0B:6D:AC:8E:B2:35:60:A3:6E:CA:05:42:AD:88', u'51': u'a=acap:5 crypto:1 AES_CM_128_HMAC_SHA1_80 inline:2a173HM53kiAsRteoqYt2AcN0vgkk2oW0+q/2VbG', u'39': u'c=IN IP4 172.31.32.194', u'65': u'a=candidate:Z0lW4m6he 1 udp 2130706431 172.31.32.194 40282 typ host', u'38': u'm=video 40282 RTP/AVP 100 104 105', u'59': u'a=rtcp-mux', u'58': u'a=sendrecv', u'11': u'm=audio 37460 RTP/AVP 8 0 3', u'10': u'a=tcap:1 UDP/TLS/RTP/SAVPF UDP/TLS/RTP/SAVP RTP/SAVPF RTP/SAVP RTP/AVPF', u'13': u'a=ptime:20', u'12': u'c=IN IP4 172.31.32.194', u'15': u'a=maxptime:255', u'14': u'a=minptime:1', u'17': u'a=rtpmap:8 PCMA/8000/1', u'16': u'a=silenceSupp:off - - - -', u'19': u'a=rtpmap:3 GSM/8000/1', u'18': u'a=rtpmap:0 PCMU/8000/1', u'31': u'a=ssrc:2055419322 label:doubango@audio', u'30': u'a=ssrc:2055419322 mslabel:6994f7d1-6ce9-4fbd-acfd-84e5131ca2e2', u'37': u'a=candidate:srflxkSjU 2 udp 1694498814 54.200.206.176 37461 typ srflx raddr 172.31.32.194 rport 37461', u'36': u'a=candidate:srflxkSjU 1 udp 1694498815 54.200.206.176 37460 typ srflx raddr 172.31.32.194 rport 37460', u'35': u'a=candidate:kSjU9az3u 2 udp 2130706430 172.31.32.194 37461 typ host', u'34': u'a=candidate:kSjU9az3u 1 udp 2130706431 172.31.32.194 37460 typ host', u'33': u'a=ice-pwd:e7B2dS6LS8CwZYHDSEA3I', u'55': u'a=pcfg:3 t=3 a=5,6', u'32': u'a=ice-ufrag:alvomTAG985uoL2', u'57': u'a=pcfg:5 t=5', u'50': u'a=fmtp:105 profile-level-id=4d001f; packetization-mode=1; impl=FFMPEG'}, 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'SIP/2.0 100 Trying', 'sipMsgSdpInfo': [], 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'SIP/2.0 180 Ringing', 'sipMsgSdpInfo': [], 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'SIP/2.0 200 OK', 'sipMsgSdpInfo': {u'11': u'm=video 50282 RTP/AVP 104', u'10': u'a=ptime:20', u'13': u'a=sendrecv', u'12': u'b=TIAS:320000', u'15': u'a=fmtp:104 profile-level-id=428016; max-mbps=69500; max-fs=2304; packetization-mode=1', u'14': u'a=rtpmap:104 H264/90000', u'17': u'a=rtcp-fb:* nack pli', u'16': u'a=rtcp-fb:* ccm fir tmmbr', u'1': u'v=0', u'3': u's=-', u'2': u'o=- 78899304125039 78899304125039 IN IP4 12.120.217.19', u'5': u'b=AS:384', u'4': u'c=IN IP4 12.120.220.45', u'7': u'm=audio 52588 RTP/AVP 0', u'6': u't=0 0', u'9': u'a=rtpmap:0 PCMU/8000/1', u'8': u'a=sendrecv'}, 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'ACK sip:12.120.217.21:5061;transport=tls SIP/2.0', 'sipMsgSdpInfo': [], 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'SIP/2.0 200 OK', 'sipMsgSdpInfo': {u'24': u'm=video 40282 RTP/AVP 110', u'25': u'c=IN IP4 172.31.32.194', u'26': u'a=rtcp-fb:* ccm fir', u'27': u'a=rtcp-fb:* nack', u'20': u'a=candidate:kSjU9az3u 1 udp 2130706431 172.31.32.194 37460 typ host', u'21': u'a=candidate:kSjU9az3u 2 udp 2130706430 172.31.32.194 37461 typ host', u'22': u'a=candidate:srflxkSjU 1 udp 1694498815 54.200.206.176 37460 typ srflx raddr 172.31.32.194 rport 37460', u'23': u'a=candidate:srflxkSjU 2 udp 1694498814 54.200.206.176 37461 typ srflx raddr 172.31.32.194 rport 37461', u'28': u'a=rtcp-fb:* goog-remb', u'29': u'a=sendrecv', u'40': u'a=candidate:srflxZ0lW 2 udp 1694498814 54.200.206.176 40283 typ srflx raddr 172.31.32.194 rport 40283', u'41': u'a=candidate:srflxZ0lW 1 udp 1694498815 54.200.206.176 40282 typ srflx raddr 172.31.32.194 rport 40282', u'1': u'v=0', u'3': u's=-', u'2': u'o=doubango 1983 678902 IN IP4 172.31.32.194', u'5': u't=0 0', u'4': u'c=IN IP4 172.31.32.194', u'7': u'c=IN IP4 172.31.32.194', u'6': u'm=audio 37460 RTP/AVP 0 8', u'9': u'a=minptime:1', u'8': u'a=ptime:20', u'39': u'a=candidate:Z0lW4m6he 2 udp 2130706430 172.31.32.194 40283 typ host', u'38': u'a=candidate:Z0lW4m6he 1 udp 2130706431 172.31.32.194 40282 typ host', u'11': u'a=silenceSupp:off - - - -', u'10': u'a=maxptime:255', u'13': u'a=rtpmap:0 PCMU/8000/1', u'12': u'a=sendrecv', u'15': u'a=ssrc:2055419322 cname:e03a0438144abc917e89c640ef9b91cd', u'14': u'a=rtpmap:8 PCMA/8000/1', u'17': u'a=ssrc:2055419322 label:doubango@audio', u'16': u'a=ssrc:2055419322 mslabel:6994f7d1-6ce9-4fbd-acfd-84e5131ca2e2', u'19': u'a=ice-pwd:e7B2dS6LS8CwZYHDSEA3I', u'18': u'a=ice-ufrag:alvomTAG985uoL2', u'31': u'a=imageattr:110 recv [x=[128:16:352],y=[96:16:480]] send [x=[128:16:352],y=[96:16:480]]', u'30': u'a=rtpmap:110 H264/90000', u'37': u'a=ice-pwd:BKbFUMBPLuRd2XZVUHBKh', u'36': u'a=ice-ufrag:g5t3K6PoNWiFMYn', u'35': u'a=ssrc:1093794301 label:doubango@video', u'34': u'a=ssrc:1093794301 mslabel:6994f7d1-6ce9-4fbd-acfd-84e5131ca2e2', u'33': u'a=ssrc:1093794301 cname:0c28747c5b4373ad01728c14a56f0cc7', u'32': u'a=fmtp:110 profile-level-id=420016; packetization-mode=1; impl=FFMPEG'}, 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'INVITE sip:14082186575@172.31.46.56:5060;transport=tcp SIP/2.0', 'sipMsgSdpInfo': {u'56': u'a=candidate:4 2 TCP-ACT 7012350 12.120.220.62 57877 typ relay raddr 12.120.191.29 rport 49332', u'77': u'a=candidate:3 1 UDP 16777215 12.120.220.62 50738 typ relay raddr 12.120.191.29 rport 49366', u'54': u'a=candidate:3 2 UDP 16777214 12.120.220.62 53184 typ relay raddr 12.120.191.29 rport 49371', u'42': u'a=rtpmap:110 H264/90000', u'48': u'a=ice-ufrag:8AIv', u'43': u'a=rtpmap:114 H264/90000', u'60': u'a=fmtp:110 profile-level-id=42801F; max-fs=3840; sar=13; packetization-mode=1', u'61': u'a=fmtp:114 profile-level-id=42801F; max-fs=3840; sar=13', u'62': u'a=x-caps:121 1:1280:720:30.0:1500000:1;2:640:480:30.0:600000:1;3:352:288:30.0:250000:1;4:176:144:30.0:180000:1', u'63': u'a=fmtp:108 CIF=1;QCIF=1;CIF4=2', u'64': u'a=fmtp:34 CIF=1;QCIF=1;CIF4=2', u'49': u'a=candidate:1 1 UDP 2130706431 12.120.191.29 49332 typ host', u'66': u'a=rtcp-fb:* ccm fir tmmbr', u'67': u'a=rtcp-fb:* nack pli', u'68': u'm=application 51416 RTP/AVP 100', u'69': u'a=sendrecv', u'80': u'a=candidate:4 2 TCP-ACT 7012350 12.120.220.62 56353 typ relay raddr 12.120.191.29 rport 49368', u'52': u'a=candidate:2 2 TCP-PASS 6619134 12.120.220.62 57877 typ relay raddr 12.120.191.29 rport 49332', u'53': u'a=candidate:3 1 UDP 16777215 12.120.220.62 54683 typ relay raddr 12.120.191.29 rport 49370', u'24': u'a=candidate:2 2 TCP-PASS 6619134 12.120.220.62 58643 typ relay raddr 12.120.191.29 rport 49336', u'25': u'a=candidate:3 1 UDP 16777215 12.120.220.62 53920 typ relay raddr 12.120.191.29 rport 49334', u'26': u'a=candidate:3 2 UDP 16777214 12.120.220.62 51468 typ relay raddr 12.120.191.29 rport 49335', u'27': u'a=candidate:4 1 TCP-ACT 7012351 12.120.220.62 58643 typ relay raddr 12.120.191.29 rport 49336', u'20': u'a=ice-ufrag:8AIv', u'21': u'a=candidate:1 1 UDP 2130706431 12.120.191.29 49336 typ host', u'22': u'a=candidate:1 2 UDP 2130706430 12.120.191.29 49337 typ host', u'23': u'a=candidate:2 1 TCP-PASS 6619135 12.120.220.62 58643 typ relay raddr 12.120.191.29 rport 49336', u'46': u'a=rtpmap:31 H261/90000', u'47': u'a=ice-pwd:ilIYmFN9a/S4vZBCKIPrU/eb', u'44': u'a=rtpmap:108 H263-1998/90000', u'45': u'a=rtpmap:34 H263/90000', u'28': u'a=candidate:4 2 TCP-ACT 7012350 12.120.220.62 58643 typ relay raddr 12.120.191.29 rport 49336', u'29': u'a=candidate:5 1 TCP-ACT 1684733951 12.120.191.29 49336 typ srflx raddr 12.120.191.29 rport 49336', u'40': u'a=sendrecv', u'41': u'a=rtpmap:109 H264/90000', u'1': u'v=0', u'82': u'a=candidate:5 2 TCP-ACT 1684733950 12.120.191.29 49368 typ srflx raddr 12.120.191.29 rport 49368', u'3': u's=-', u'2': u'o=- 78899304125039 78899304125040 IN IP4 12.120.217.19', u'5': u'b=AS:4096', u'4': u'c=IN IP4 12.120.220.45', u'7': u'm=audio 52588 RTP/AVP 115 114 104 103 102 9 0 8 18 101', u'6': u't=0 0', u'9': u'a=rtpmap:115 G7221/32000', u'8': u'a=sendrecv', u'78': u'a=candidate:3 2 UDP 16777214 12.120.220.62 53557 typ relay raddr 12.120.191.29 rport 49367', u'51': u'a=candidate:2 1 TCP-PASS 6619135 12.120.220.62 57877 typ relay raddr 12.120.191.29 rport 49332', u'39': u'b=TIAS:4048000', u'65': u'a=fmtp:31 CIF=1;QCIF=1', u'76': u'a=candidate:2 2 TCP-PASS 6619134 12.120.220.62 56353 typ relay raddr 12.120.191.29 rport 49368', u'75': u'a=candidate:2 1 TCP-PASS 6619135 12.120.220.62 56353 typ relay raddr 12.120.191.29 rport 49368', u'38': u'm=video 50282 RTP/AVP 109 110 114 108 34 31', u'73': u'a=candidate:1 1 UDP 2130706431 12.120.191.29 49368 typ host', u'72': u'a=ice-ufrag:8AIv', u'71': u'a=ice-pwd:ilIYmFN9a/S4vZBCKIPrU/eb', u'70': u'a=rtpmap:100 H224/6400', u'59': u'a=fmtp:109 profile-level-id=64001F; max-fs=3840; sar=13; packetization-mode=1', u'79': u'a=candidate:4 1 TCP-ACT 7012351 12.120.220.62 56353 typ relay raddr 12.120.191.29 rport 49368', u'58': u'a=candidate:5 2 TCP-ACT 1684733950 12.120.191.29 49332 typ srflx raddr 12.120.191.29 rport 49332', u'11': u'a=rtpmap:104 G7221/16000', u'10': u'a=rtpmap:114 G7221/32000', u'13': u'a=rtpmap:102 G7221/16000', u'12': u'a=rtpmap:103 G7221/16000', u'15': u'a=rtpmap:0 PCMU/8000', u'14': u'a=rtpmap:9 G722/8000', u'17': u'a=rtpmap:18 G729/8000', u'16': u'a=rtpmap:8 PCMA/8000', u'19': u'a=ice-pwd:ilIYmFN9a/S4vZBCKIPrU/eb', u'18': u'a=rtpmap:101 telephone-event/8000', u'31': u'a=fmtp:115 bitrate=48000', u'30': u'a=candidate:5 2 TCP-ACT 1684733950 12.120.191.29 49336 typ srflx raddr 12.120.191.29 rport 49336', u'37': u'a=ptime:20', u'36': u'a=fmtp:101 0-16', u'35': u'a=fmtp:102 bitrate=16000', u'34': u'a=fmtp:103 bitrate=24000', u'33': u'a=fmtp:104 bitrate=32000', u'55': u'a=candidate:4 1 TCP-ACT 7012351 12.120.220.62 57877 typ relay raddr 12.120.191.29 rport 49332', u'74': u'a=candidate:1 2 UDP 2130706430 12.120.191.29 49369 typ host', u'32': u'a=fmtp:114 bitrate=32000', u'81': u'a=candidate:5 1 TCP-ACT 1684733951 12.120.191.29 49368 typ srflx raddr 12.120.191.29 rport 49368', u'57': u'a=candidate:5 1 TCP-ACT 1684733951 12.120.191.29 49332 typ srflx raddr 12.120.191.29 rport 49332', u'50': u'a=candidate:1 2 UDP 2130706430 12.120.191.29 49333 typ host'}, 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'SIP/2.0 100 Trying', 'sipMsgSdpInfo': [], 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'ACK sip:172.31.46.56:5060;transport=tcp SIP/2.0', 'sipMsgSdpInfo': [], 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'BYE sip:12.120.217.21:5061;transport=tls SIP/2.0', 'sipMsgSdpInfo': [], 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}, {'sipMsgMethodInfo': u'SIP/2.0 200 OK', 'sipMsgSdpInfo': [], 'sipMsgCallId': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}]
+03/21/2014 07:27:12.936 INFO Server response: 
+<?xml version='1.0'?>
+<methodResponse>
+<params>
+<param>
+<value><array><data>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>INVITE sip:18888411668**1233211@vmr.att.com SIP/2.0</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><struct>
+<member>
+<name>56</name>
+<value><string>a=pcfg:4 t=4 a=5,6</string></value>
+</member>
+<member>
+<name>54</name>
+<value><string>a=pcfg:2 t=2 a=1,2,4|3</string></value>
+</member>
+<member>
+<name>42</name>
+<value><string>a=rtcp-fb:* goog-remb</string></value>
+</member>
+<member>
+<name>48</name>
+<value><string>a=rtpmap:105 H264/90000</string></value>
+</member>
+<member>
+<name>43</name>
+<value><string>a=rtpmap:100 VP8/90000</string></value>
+</member>
+<member>
+<name>60</name>
+<value><string>a=ssrc:1093794301 cname:0c28747c5b4373ad01728c14a56f0cc7</string></value>
+</member>
+<member>
+<name>61</name>
+<value><string>a=ssrc:1093794301 mslabel:6994f7d1-6ce9-4fbd-acfd-84e5131ca2e2</string></value>
+</member>
+<member>
+<name>62</name>
+<value><string>a=ssrc:1093794301 label:doubango@video</string></value>
+</member>
+<member>
+<name>63</name>
+<value><string>a=ice-ufrag:g5t3K6PoNWiFMYn</string></value>
+</member>
+<member>
+<name>64</name>
+<value><string>a=ice-pwd:BKbFUMBPLuRd2XZVUHBKh</string></value>
+</member>
+<member>
+<name>49</name>
+<value><string>a=imageattr:105 recv [x=[128:16:1280],y=[96:16:720]] send [x=[128:16:1280],y=[96:16:720]]</string></value>
+</member>
+<member>
+<name>66</name>
+<value><string>a=candidate:Z0lW4m6he 2 udp 2130706430 172.31.32.194 40283 typ host</string></value>
+</member>
+<member>
+<name>67</name>
+<value><string>a=candidate:srflxZ0lW 2 udp 1694498814 54.200.206.176 40283 typ srflx raddr 172.31.32.194 rport 40283</string></value>
+</member>
+<member>
+<name>68</name>
+<value><string>a=candidate:srflxZ0lW 1 udp 1694498815 54.200.206.176 40282 typ srflx raddr 172.31.32.194 rport 40282</string></value>
+</member>
+<member>
+<name>52</name>
+<value><string>a=acap:6 crypto:2 AES_CM_128_HMAC_SHA1_32 inline:pP+w+dEsT3Y6SaC7JnNo2GgAyQHlNeXQiOcWl/q9</string></value>
+</member>
+<member>
+<name>53</name>
+<value><string>a=pcfg:1 t=1 a=1,2,4|3</string></value>
+</member>
+<member>
+<name>24</name>
+<value><string>a=pcfg:3 t=3 a=5,6</string></value>
+</member>
+<member>
+<name>25</name>
+<value><string>a=pcfg:4 t=4 a=5,6</string></value>
+</member>
+<member>
+<name>26</name>
+<value><string>a=pcfg:5 t=5</string></value>
+</member>
+<member>
+<name>27</name>
+<value><string>a=sendrecv</string></value>
+</member>
+<member>
+<name>20</name>
+<value><string>a=acap:5 crypto:1 AES_CM_128_HMAC_SHA1_80 inline:jLevAkZSNf1P3GtJ1KPzPslLyb2frR3xu0vRYgAx</string></value>
+</member>
+<member>
+<name>21</name>
+<value><string>a=acap:6 crypto:2 AES_CM_128_HMAC_SHA1_32 inline:zCuC+pQ/CY28u1E/uw9crm0nq5Zw/wL+0xiapUXV</string></value>
+</member>
+<member>
+<name>22</name>
+<value><string>a=pcfg:1 t=1 a=1,2,4|3</string></value>
+</member>
+<member>
+<name>23</name>
+<value><string>a=pcfg:2 t=2 a=1,2,4|3</string></value>
+</member>
+<member>
+<name>46</name>
+<value><string>a=imageattr:104 recv [x=[128:16:1280],y=[96:16:720]] send [x=[128:16:1280],y=[96:16:720]]</string></value>
+</member>
+<member>
+<name>47</name>
+<value><string>a=fmtp:104 profile-level-id=42001f; packetization-mode=1; impl=FFMPEG</string></value>
+</member>
+<member>
+<name>44</name>
+<value><string>a=imageattr:100 recv [x=[128:16:1280],y=[96:16:720]] send [x=[128:16:1280],y=[96:16:720]]</string></value>
+</member>
+<member>
+<name>45</name>
+<value><string>a=rtpmap:104 H264/90000</string></value>
+</member>
+<member>
+<name>28</name>
+<value><string>a=rtcp-mux</string></value>
+</member>
+<member>
+<name>29</name>
+<value><string>a=ssrc:2055419322 cname:e03a0438144abc917e89c640ef9b91cd</string></value>
+</member>
+<member>
+<name>40</name>
+<value><string>a=rtcp-fb:* ccm fir</string></value>
+</member>
+<member>
+<name>41</name>
+<value><string>a=rtcp-fb:* nack</string></value>
+</member>
+<member>
+<name>1</name>
+<value><string>v=0</string></value>
+</member>
+<member>
+<name>3</name>
+<value><string>s=-</string></value>
+</member>
+<member>
+<name>2</name>
+<value><string>o=doubango 1983 678901 IN IP4 172.31.32.194</string></value>
+</member>
+<member>
+<name>5</name>
+<value><string>t=0 0</string></value>
+</member>
+<member>
+<name>4</name>
+<value><string>c=IN IP4 172.31.32.194</string></value>
+</member>
+<member>
+<name>7</name>
+<value><string>a=acap:2 connection:new</string></value>
+</member>
+<member>
+<name>6</name>
+<value><string>a=acap:1 setup:passive</string></value>
+</member>
+<member>
+<name>9</name>
+<value><string>a=acap:4 fingerprint:sha-1 51:25:1B:78:B4:3F:13:09:2E:24:0F:1C:6B:26:50:BC:B3:13:8E:45</string></value>
+</member>
+<member>
+<name>8</name>
+<value><string>a=acap:3 fingerprint:sha-256 E6:93:08:07:E3:E7:FD:26:CB:2F:A2:AE:F7:50:F5:8D:72:BA:0B:6D:AC:8E:B2:35:60:A3:6E:CA:05:42:AD:88</string></value>
+</member>
+<member>
+<name>51</name>
+<value><string>a=acap:5 crypto:1 AES_CM_128_HMAC_SHA1_80 inline:2a173HM53kiAsRteoqYt2AcN0vgkk2oW0+q/2VbG</string></value>
+</member>
+<member>
+<name>39</name>
+<value><string>c=IN IP4 172.31.32.194</string></value>
+</member>
+<member>
+<name>65</name>
+<value><string>a=candidate:Z0lW4m6he 1 udp 2130706431 172.31.32.194 40282 typ host</string></value>
+</member>
+<member>
+<name>38</name>
+<value><string>m=video 40282 RTP/AVP 100 104 105</string></value>
+</member>
+<member>
+<name>59</name>
+<value><string>a=rtcp-mux</string></value>
+</member>
+<member>
+<name>58</name>
+<value><string>a=sendrecv</string></value>
+</member>
+<member>
+<name>11</name>
+<value><string>m=audio 37460 RTP/AVP 8 0 3</string></value>
+</member>
+<member>
+<name>10</name>
+<value><string>a=tcap:1 UDP/TLS/RTP/SAVPF UDP/TLS/RTP/SAVP RTP/SAVPF RTP/SAVP RTP/AVPF</string></value>
+</member>
+<member>
+<name>13</name>
+<value><string>a=ptime:20</string></value>
+</member>
+<member>
+<name>12</name>
+<value><string>c=IN IP4 172.31.32.194</string></value>
+</member>
+<member>
+<name>15</name>
+<value><string>a=maxptime:255</string></value>
+</member>
+<member>
+<name>14</name>
+<value><string>a=minptime:1</string></value>
+</member>
+<member>
+<name>17</name>
+<value><string>a=rtpmap:8 PCMA/8000/1</string></value>
+</member>
+<member>
+<name>16</name>
+<value><string>a=silenceSupp:off - - - -</string></value>
+</member>
+<member>
+<name>19</name>
+<value><string>a=rtpmap:3 GSM/8000/1</string></value>
+</member>
+<member>
+<name>18</name>
+<value><string>a=rtpmap:0 PCMU/8000/1</string></value>
+</member>
+<member>
+<name>31</name>
+<value><string>a=ssrc:2055419322 label:doubango@audio</string></value>
+</member>
+<member>
+<name>30</name>
+<value><string>a=ssrc:2055419322 mslabel:6994f7d1-6ce9-4fbd-acfd-84e5131ca2e2</string></value>
+</member>
+<member>
+<name>37</name>
+<value><string>a=candidate:srflxkSjU 2 udp 1694498814 54.200.206.176 37461 typ srflx raddr 172.31.32.194 rport 37461</string></value>
+</member>
+<member>
+<name>36</name>
+<value><string>a=candidate:srflxkSjU 1 udp 1694498815 54.200.206.176 37460 typ srflx raddr 172.31.32.194 rport 37460</string></value>
+</member>
+<member>
+<name>35</name>
+<value><string>a=candidate:kSjU9az3u 2 udp 2130706430 172.31.32.194 37461 typ host</string></value>
+</member>
+<member>
+<name>34</name>
+<value><string>a=candidate:kSjU9az3u 1 udp 2130706431 172.31.32.194 37460 typ host</string></value>
+</member>
+<member>
+<name>33</name>
+<value><string>a=ice-pwd:e7B2dS6LS8CwZYHDSEA3I</string></value>
+</member>
+<member>
+<name>55</name>
+<value><string>a=pcfg:3 t=3 a=5,6</string></value>
+</member>
+<member>
+<name>32</name>
+<value><string>a=ice-ufrag:alvomTAG985uoL2</string></value>
+</member>
+<member>
+<name>57</name>
+<value><string>a=pcfg:5 t=5</string></value>
+</member>
+<member>
+<name>50</name>
+<value><string>a=fmtp:105 profile-level-id=4d001f; packetization-mode=1; impl=FFMPEG</string></value>
+</member>
+</struct></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>SIP/2.0 100 Trying</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><array><data>
+</data></array></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>SIP/2.0 180 Ringing</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><array><data>
+</data></array></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>SIP/2.0 200 OK</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><struct>
+<member>
+<name>11</name>
+<value><string>m=video 50282 RTP/AVP 104</string></value>
+</member>
+<member>
+<name>10</name>
+<value><string>a=ptime:20</string></value>
+</member>
+<member>
+<name>13</name>
+<value><string>a=sendrecv</string></value>
+</member>
+<member>
+<name>12</name>
+<value><string>b=TIAS:320000</string></value>
+</member>
+<member>
+<name>15</name>
+<value><string>a=fmtp:104 profile-level-id=428016; max-mbps=69500; max-fs=2304; packetization-mode=1</string></value>
+</member>
+<member>
+<name>14</name>
+<value><string>a=rtpmap:104 H264/90000</string></value>
+</member>
+<member>
+<name>17</name>
+<value><string>a=rtcp-fb:* nack pli</string></value>
+</member>
+<member>
+<name>16</name>
+<value><string>a=rtcp-fb:* ccm fir tmmbr</string></value>
+</member>
+<member>
+<name>1</name>
+<value><string>v=0</string></value>
+</member>
+<member>
+<name>3</name>
+<value><string>s=-</string></value>
+</member>
+<member>
+<name>2</name>
+<value><string>o=- 78899304125039 78899304125039 IN IP4 12.120.217.19</string></value>
+</member>
+<member>
+<name>5</name>
+<value><string>b=AS:384</string></value>
+</member>
+<member>
+<name>4</name>
+<value><string>c=IN IP4 12.120.220.45</string></value>
+</member>
+<member>
+<name>7</name>
+<value><string>m=audio 52588 RTP/AVP 0</string></value>
+</member>
+<member>
+<name>6</name>
+<value><string>t=0 0</string></value>
+</member>
+<member>
+<name>9</name>
+<value><string>a=rtpmap:0 PCMU/8000/1</string></value>
+</member>
+<member>
+<name>8</name>
+<value><string>a=sendrecv</string></value>
+</member>
+</struct></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>ACK sip:12.120.217.21:5061;transport=tls SIP/2.0</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><array><data>
+</data></array></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>SIP/2.0 200 OK</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><struct>
+<member>
+<name>24</name>
+<value><string>m=video 40282 RTP/AVP 110</string></value>
+</member>
+<member>
+<name>25</name>
+<value><string>c=IN IP4 172.31.32.194</string></value>
+</member>
+<member>
+<name>26</name>
+<value><string>a=rtcp-fb:* ccm fir</string></value>
+</member>
+<member>
+<name>27</name>
+<value><string>a=rtcp-fb:* nack</string></value>
+</member>
+<member>
+<name>20</name>
+<value><string>a=candidate:kSjU9az3u 1 udp 2130706431 172.31.32.194 37460 typ host</string></value>
+</member>
+<member>
+<name>21</name>
+<value><string>a=candidate:kSjU9az3u 2 udp 2130706430 172.31.32.194 37461 typ host</string></value>
+</member>
+<member>
+<name>22</name>
+<value><string>a=candidate:srflxkSjU 1 udp 1694498815 54.200.206.176 37460 typ srflx raddr 172.31.32.194 rport 37460</string></value>
+</member>
+<member>
+<name>23</name>
+<value><string>a=candidate:srflxkSjU 2 udp 1694498814 54.200.206.176 37461 typ srflx raddr 172.31.32.194 rport 37461</string></value>
+</member>
+<member>
+<name>28</name>
+<value><string>a=rtcp-fb:* goog-remb</string></value>
+</member>
+<member>
+<name>29</name>
+<value><string>a=sendrecv</string></value>
+</member>
+<member>
+<name>40</name>
+<value><string>a=candidate:srflxZ0lW 2 udp 1694498814 54.200.206.176 40283 typ srflx raddr 172.31.32.194 rport 40283</string></value>
+</member>
+<member>
+<name>41</name>
+<value><string>a=candidate:srflxZ0lW 1 udp 1694498815 54.200.206.176 40282 typ srflx raddr 172.31.32.194 rport 40282</string></value>
+</member>
+<member>
+<name>1</name>
+<value><string>v=0</string></value>
+</member>
+<member>
+<name>3</name>
+<value><string>s=-</string></value>
+</member>
+<member>
+<name>2</name>
+<value><string>o=doubango 1983 678902 IN IP4 172.31.32.194</string></value>
+</member>
+<member>
+<name>5</name>
+<value><string>t=0 0</string></value>
+</member>
+<member>
+<name>4</name>
+<value><string>c=IN IP4 172.31.32.194</string></value>
+</member>
+<member>
+<name>7</name>
+<value><string>c=IN IP4 172.31.32.194</string></value>
+</member>
+<member>
+<name>6</name>
+<value><string>m=audio 37460 RTP/AVP 0 8</string></value>
+</member>
+<member>
+<name>9</name>
+<value><string>a=minptime:1</string></value>
+</member>
+<member>
+<name>8</name>
+<value><string>a=ptime:20</string></value>
+</member>
+<member>
+<name>39</name>
+<value><string>a=candidate:Z0lW4m6he 2 udp 2130706430 172.31.32.194 40283 typ host</string></value>
+</member>
+<member>
+<name>38</name>
+<value><string>a=candidate:Z0lW4m6he 1 udp 2130706431 172.31.32.194 40282 typ host</string></value>
+</member>
+<member>
+<name>11</name>
+<value><string>a=silenceSupp:off - - - -</string></value>
+</member>
+<member>
+<name>10</name>
+<value><string>a=maxptime:255</string></value>
+</member>
+<member>
+<name>13</name>
+<value><string>a=rtpmap:0 PCMU/8000/1</string></value>
+</member>
+<member>
+<name>12</name>
+<value><string>a=sendrecv</string></value>
+</member>
+<member>
+<name>15</name>
+<value><string>a=ssrc:2055419322 cname:e03a0438144abc917e89c640ef9b91cd</string></value>
+</member>
+<member>
+<name>14</name>
+<value><string>a=rtpmap:8 PCMA/8000/1</string></value>
+</member>
+<member>
+<name>17</name>
+<value><string>a=ssrc:2055419322 label:doubango@audio</string></value>
+</member>
+<member>
+<name>16</name>
+<value><string>a=ssrc:2055419322 mslabel:6994f7d1-6ce9-4fbd-acfd-84e5131ca2e2</string></value>
+</member>
+<member>
+<name>19</name>
+<value><string>a=ice-pwd:e7B2dS6LS8CwZYHDSEA3I</string></value>
+</member>
+<member>
+<name>18</name>
+<value><string>a=ice-ufrag:alvomTAG985uoL2</string></value>
+</member>
+<member>
+<name>31</name>
+<value><string>a=imageattr:110 recv [x=[128:16:352],y=[96:16:480]] send [x=[128:16:352],y=[96:16:480]]</string></value>
+</member>
+<member>
+<name>30</name>
+<value><string>a=rtpmap:110 H264/90000</string></value>
+</member>
+<member>
+<name>37</name>
+<value><string>a=ice-pwd:BKbFUMBPLuRd2XZVUHBKh</string></value>
+</member>
+<member>
+<name>36</name>
+<value><string>a=ice-ufrag:g5t3K6PoNWiFMYn</string></value>
+</member>
+<member>
+<name>35</name>
+<value><string>a=ssrc:1093794301 label:doubango@video</string></value>
+</member>
+<member>
+<name>34</name>
+<value><string>a=ssrc:1093794301 mslabel:6994f7d1-6ce9-4fbd-acfd-84e5131ca2e2</string></value>
+</member>
+<member>
+<name>33</name>
+<value><string>a=ssrc:1093794301 cname:0c28747c5b4373ad01728c14a56f0cc7</string></value>
+</member>
+<member>
+<name>32</name>
+<value><string>a=fmtp:110 profile-level-id=420016; packetization-mode=1; impl=FFMPEG</string></value>
+</member>
+</struct></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>INVITE sip:14082186575@172.31.46.56:5060;transport=tcp SIP/2.0</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><struct>
+<member>
+<name>56</name>
+<value><string>a=candidate:4 2 TCP-ACT 7012350 12.120.220.62 57877 typ relay raddr 12.120.191.29 rport 49332</string></value>
+</member>
+<member>
+<name>77</name>
+<value><string>a=candidate:3 1 UDP 16777215 12.120.220.62 50738 typ relay raddr 12.120.191.29 rport 49366</string></value>
+</member>
+<member>
+<name>54</name>
+<value><string>a=candidate:3 2 UDP 16777214 12.120.220.62 53184 typ relay raddr 12.120.191.29 rport 49371</string></value>
+</member>
+<member>
+<name>42</name>
+<value><string>a=rtpmap:110 H264/90000</string></value>
+</member>
+<member>
+<name>48</name>
+<value><string>a=ice-ufrag:8AIv</string></value>
+</member>
+<member>
+<name>43</name>
+<value><string>a=rtpmap:114 H264/90000</string></value>
+</member>
+<member>
+<name>60</name>
+<value><string>a=fmtp:110 profile-level-id=42801F; max-fs=3840; sar=13; packetization-mode=1</string></value>
+</member>
+<member>
+<name>61</name>
+<value><string>a=fmtp:114 profile-level-id=42801F; max-fs=3840; sar=13</string></value>
+</member>
+<member>
+<name>62</name>
+<value><string>a=x-caps:121 1:1280:720:30.0:1500000:1;2:640:480:30.0:600000:1;3:352:288:30.0:250000:1;4:176:144:30.0:180000:1</string></value>
+</member>
+<member>
+<name>63</name>
+<value><string>a=fmtp:108 CIF=1;QCIF=1;CIF4=2</string></value>
+</member>
+<member>
+<name>64</name>
+<value><string>a=fmtp:34 CIF=1;QCIF=1;CIF4=2</string></value>
+</member>
+<member>
+<name>49</name>
+<value><string>a=candidate:1 1 UDP 2130706431 12.120.191.29 49332 typ host</string></value>
+</member>
+<member>
+<name>66</name>
+<value><string>a=rtcp-fb:* ccm fir tmmbr</string></value>
+</member>
+<member>
+<name>67</name>
+<value><string>a=rtcp-fb:* nack pli</string></value>
+</member>
+<member>
+<name>68</name>
+<value><string>m=application 51416 RTP/AVP 100</string></value>
+</member>
+<member>
+<name>69</name>
+<value><string>a=sendrecv</string></value>
+</member>
+<member>
+<name>80</name>
+<value><string>a=candidate:4 2 TCP-ACT 7012350 12.120.220.62 56353 typ relay raddr 12.120.191.29 rport 49368</string></value>
+</member>
+<member>
+<name>52</name>
+<value><string>a=candidate:2 2 TCP-PASS 6619134 12.120.220.62 57877 typ relay raddr 12.120.191.29 rport 49332</string></value>
+</member>
+<member>
+<name>53</name>
+<value><string>a=candidate:3 1 UDP 16777215 12.120.220.62 54683 typ relay raddr 12.120.191.29 rport 49370</string></value>
+</member>
+<member>
+<name>24</name>
+<value><string>a=candidate:2 2 TCP-PASS 6619134 12.120.220.62 58643 typ relay raddr 12.120.191.29 rport 49336</string></value>
+</member>
+<member>
+<name>25</name>
+<value><string>a=candidate:3 1 UDP 16777215 12.120.220.62 53920 typ relay raddr 12.120.191.29 rport 49334</string></value>
+</member>
+<member>
+<name>26</name>
+<value><string>a=candidate:3 2 UDP 16777214 12.120.220.62 51468 typ relay raddr 12.120.191.29 rport 49335</string></value>
+</member>
+<member>
+<name>27</name>
+<value><string>a=candidate:4 1 TCP-ACT 7012351 12.120.220.62 58643 typ relay raddr 12.120.191.29 rport 49336</string></value>
+</member>
+<member>
+<name>20</name>
+<value><string>a=ice-ufrag:8AIv</string></value>
+</member>
+<member>
+<name>21</name>
+<value><string>a=candidate:1 1 UDP 2130706431 12.120.191.29 49336 typ host</string></value>
+</member>
+<member>
+<name>22</name>
+<value><string>a=candidate:1 2 UDP 2130706430 12.120.191.29 49337 typ host</string></value>
+</member>
+<member>
+<name>23</name>
+<value><string>a=candidate:2 1 TCP-PASS 6619135 12.120.220.62 58643 typ relay raddr 12.120.191.29 rport 49336</string></value>
+</member>
+<member>
+<name>46</name>
+<value><string>a=rtpmap:31 H261/90000</string></value>
+</member>
+<member>
+<name>47</name>
+<value><string>a=ice-pwd:ilIYmFN9a/S4vZBCKIPrU/eb</string></value>
+</member>
+<member>
+<name>44</name>
+<value><string>a=rtpmap:108 H263-1998/90000</string></value>
+</member>
+<member>
+<name>45</name>
+<value><string>a=rtpmap:34 H263/90000</string></value>
+</member>
+<member>
+<name>28</name>
+<value><string>a=candidate:4 2 TCP-ACT 7012350 12.120.220.62 58643 typ relay raddr 12.120.191.29 rport 49336</string></value>
+</member>
+<member>
+<name>29</name>
+<value><string>a=candidate:5 1 TCP-ACT 1684733951 12.120.191.29 49336 typ srflx raddr 12.120.191.29 rport 49336</string></value>
+</member>
+<member>
+<name>40</name>
+<value><string>a=sendrecv</string></value>
+</member>
+<member>
+<name>41</name>
+<value><string>a=rtpmap:109 H264/90000</string></value>
+</member>
+<member>
+<name>1</name>
+<value><string>v=0</string></value>
+</member>
+<member>
+<name>82</name>
+<value><string>a=candidate:5 2 TCP-ACT 1684733950 12.120.191.29 49368 typ srflx raddr 12.120.191.29 rport 49368</string></value>
+</member>
+<member>
+<name>3</name>
+<value><string>s=-</string></value>
+</member>
+<member>
+<name>2</name>
+<value><string>o=- 78899304125039 78899304125040 IN IP4 12.120.217.19</string></value>
+</member>
+<member>
+<name>5</name>
+<value><string>b=AS:4096</string></value>
+</member>
+<member>
+<name>4</name>
+<value><string>c=IN IP4 12.120.220.45</string></value>
+</member>
+<member>
+<name>7</name>
+<value><string>m=audio 52588 RTP/AVP 115 114 104 103 102 9 0 8 18 101</string></value>
+</member>
+<member>
+<name>6</name>
+<value><string>t=0 0</string></value>
+</member>
+<member>
+<name>9</name>
+<value><string>a=rtpmap:115 G7221/32000</string></value>
+</member>
+<member>
+<name>8</name>
+<value><string>a=sendrecv</string></value>
+</member>
+<member>
+<name>78</name>
+<value><string>a=candidate:3 2 UDP 16777214 12.120.220.62 53557 typ relay raddr 12.120.191.29 rport 49367</string></value>
+</member>
+<member>
+<name>51</name>
+<value><string>a=candidate:2 1 TCP-PASS 6619135 12.120.220.62 57877 typ relay raddr 12.120.191.29 rport 49332</string></value>
+</member>
+<member>
+<name>39</name>
+<value><string>b=TIAS:4048000</string></value>
+</member>
+<member>
+<name>65</name>
+<value><string>a=fmtp:31 CIF=1;QCIF=1</string></value>
+</member>
+<member>
+<name>76</name>
+<value><string>a=candidate:2 2 TCP-PASS 6619134 12.120.220.62 56353 typ relay raddr 12.120.191.29 rport 49368</string></value>
+</member>
+<member>
+<name>75</name>
+<value><string>a=candidate:2 1 TCP-PASS 6619135 12.120.220.62 56353 typ relay raddr 12.120.191.29 rport 49368</string></value>
+</member>
+<member>
+<name>38</name>
+<value><string>m=video 50282 RTP/AVP 109 110 114 108 34 31</string></value>
+</member>
+<member>
+<name>73</name>
+<value><string>a=candidate:1 1 UDP 2130706431 12.120.191.29 49368 typ host</string></value>
+</member>
+<member>
+<name>72</name>
+<value><string>a=ice-ufrag:8AIv</string></value>
+</member>
+<member>
+<name>71</name>
+<value><string>a=ice-pwd:ilIYmFN9a/S4vZBCKIPrU/eb</string></value>
+</member>
+<member>
+<name>70</name>
+<value><string>a=rtpmap:100 H224/6400</string></value>
+</member>
+<member>
+<name>59</name>
+<value><string>a=fmtp:109 profile-level-id=64001F; max-fs=3840; sar=13; packetization-mode=1</string></value>
+</member>
+<member>
+<name>79</name>
+<value><string>a=candidate:4 1 TCP-ACT 7012351 12.120.220.62 56353 typ relay raddr 12.120.191.29 rport 49368</string></value>
+</member>
+<member>
+<name>58</name>
+<value><string>a=candidate:5 2 TCP-ACT 1684733950 12.120.191.29 49332 typ srflx raddr 12.120.191.29 rport 49332</string></value>
+</member>
+<member>
+<name>11</name>
+<value><string>a=rtpmap:104 G7221/16000</string></value>
+</member>
+<member>
+<name>10</name>
+<value><string>a=rtpmap:114 G7221/32000</string></value>
+</member>
+<member>
+<name>13</name>
+<value><string>a=rtpmap:102 G7221/16000</string></value>
+</member>
+<member>
+<name>12</name>
+<value><string>a=rtpmap:103 G7221/16000</string></value>
+</member>
+<member>
+<name>15</name>
+<value><string>a=rtpmap:0 PCMU/8000</string></value>
+</member>
+<member>
+<name>14</name>
+<value><string>a=rtpmap:9 G722/8000</string></value>
+</member>
+<member>
+<name>17</name>
+<value><string>a=rtpmap:18 G729/8000</string></value>
+</member>
+<member>
+<name>16</name>
+<value><string>a=rtpmap:8 PCMA/8000</string></value>
+</member>
+<member>
+<name>19</name>
+<value><string>a=ice-pwd:ilIYmFN9a/S4vZBCKIPrU/eb</string></value>
+</member>
+<member>
+<name>18</name>
+<value><string>a=rtpmap:101 telephone-event/8000</string></value>
+</member>
+<member>
+<name>31</name>
+<value><string>a=fmtp:115 bitrate=48000</string></value>
+</member>
+<member>
+<name>30</name>
+<value><string>a=candidate:5 2 TCP-ACT 1684733950 12.120.191.29 49336 typ srflx raddr 12.120.191.29 rport 49336</string></value>
+</member>
+<member>
+<name>37</name>
+<value><string>a=ptime:20</string></value>
+</member>
+<member>
+<name>36</name>
+<value><string>a=fmtp:101 0-16</string></value>
+</member>
+<member>
+<name>35</name>
+<value><string>a=fmtp:102 bitrate=16000</string></value>
+</member>
+<member>
+<name>34</name>
+<value><string>a=fmtp:103 bitrate=24000</string></value>
+</member>
+<member>
+<name>33</name>
+<value><string>a=fmtp:104 bitrate=32000</string></value>
+</member>
+<member>
+<name>55</name>
+<value><string>a=candidate:4 1 TCP-ACT 7012351 12.120.220.62 57877 typ relay raddr 12.120.191.29 rport 49332</string></value>
+</member>
+<member>
+<name>74</name>
+<value><string>a=candidate:1 2 UDP 2130706430 12.120.191.29 49369 typ host</string></value>
+</member>
+<member>
+<name>32</name>
+<value><string>a=fmtp:114 bitrate=32000</string></value>
+</member>
+<member>
+<name>81</name>
+<value><string>a=candidate:5 1 TCP-ACT 1684733951 12.120.191.29 49368 typ srflx raddr 12.120.191.29 rport 49368</string></value>
+</member>
+<member>
+<name>57</name>
+<value><string>a=candidate:5 1 TCP-ACT 1684733951 12.120.191.29 49332 typ srflx raddr 12.120.191.29 rport 49332</string></value>
+</member>
+<member>
+<name>50</name>
+<value><string>a=candidate:1 2 UDP 2130706430 12.120.191.29 49333 typ host</string></value>
+</member>
+</struct></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>SIP/2.0 100 Trying</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><array><data>
+</data></array></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>ACK sip:172.31.46.56:5060;transport=tcp SIP/2.0</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><array><data>
+</data></array></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>BYE sip:12.120.217.21:5061;transport=tls SIP/2.0</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><array><data>
+</data></array></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+<value><struct>
+<member>
+<name>sipMsgMethodInfo</name>
+<value><string>SIP/2.0 200 OK</string></value>
+</member>
+<member>
+<name>sipMsgSdpInfo</name>
+<value><array><data>
+</data></array></value>
+</member>
+<member>
+<name>sipMsgCallId</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+</data></array></value>
+</param>
+</params>
+</methodResponse>
+
+
+03/21/2014 07:27:12.949 INFO Client IP: 172.31.46.56 - Port: 40744
+03/21/2014 07:27:12.950 INFO Client request: 
+<?xml version='1.0' encoding='UTF-8'?>
+<methodCall>
+<methodName>getVersion</methodName>
+<params>
+</params>
+</methodCall>
+
+
+03/21/2014 07:27:12.950 INFO show_version() API show.version
+03/21/2014 07:27:12.950 INFO Server response: 
+<?xml version='1.0'?>
+<methodResponse>
+<params>
+<param>
+<value><string>1.0.1</string></value>
+</param>
+</params>
+</methodResponse>
+
+
+03/21/2014 07:27:12.954 INFO Client IP: 172.31.46.56 - Port: 40745
+03/21/2014 07:27:12.954 INFO Client request: 
+<?xml version='1.0' encoding='UTF-8'?>
+<methodCall>
+<methodName>get.sipcallgeolocation</methodName>
+<params>
+<param>
+<value><struct>
+<member>
+<name>authenticationPassword</name>
+<value><string>1qaz2wsx</string></value>
+</member>
+<member>
+<name>sipCallID</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+<member>
+<name>authenticationUser</name>
+<value><string>sut</string></value>
+</member>
+</struct></value>
+</param>
+</params>
+</methodCall>
+
+
+03/21/2014 07:27:12.954 INFO getSipCallGeoLocation() API get.sipcallgeolocation
+03/21/2014 07:27:13.372 INFO sipCall() New sipCall object created()
+03/21/2014 07:27:13.373 INFO getSipCallFromParse() Found call online!
+03/21/2014 07:27:13.373 INFO a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56
+03/21/2014 07:27:13.374 INFO <parse_rest.datatypes.GeoPoint object at 0x18f9d10>
+03/21/2014 07:27:13.374 INFO {u'city': u'Seattle', u'region_code': u'WA', u'region_name': u'Washington', u'areacode': u'206', u'ip': u'54.201.8.102', u'zipcode': u'98144', u'longitude': -122.2995, u'metro_code': u'819', u'country_name': u'United States', u'country_code': u'US', u'latitude': 47.5839}
+03/21/2014 07:27:13.375 INFO [u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56', 1139.62]
+03/21/2014 07:27:13.375 INFO {'sipCallDistance': 1139.62, 'sipCallID': u'a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56'}
+03/21/2014 07:27:13.375 INFO Server response: 
+<?xml version='1.0'?>
+<methodResponse>
+<params>
+<param>
+<value><struct>
+<member>
+<name>sipCallDistance</name>
+<value><double>1139.62</double></value>
+</member>
+<member>
+<name>sipCallID</name>
+<value><string>a2a47d3aca8bb6d1bdaaf3fd1ec4ee23@172.31.46.56</string></value>
+</member>
+</struct></value>
+</param>
+</params>
+</methodResponse>
+
+
+03/21/2014 07:27:17.909 INFO XML-RPC Request Handler Server stopping....

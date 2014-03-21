@@ -21,7 +21,7 @@ from struct import *
 
 sys.excepthook = lambda *args: None
 
-register(sipLocatorConfig.APPLICATION_ID, sipLocatorConfig.REST_API_KEY)
+register(sipLocatorConfig.PARSE_APPLICATION_ID, sipLocatorConfig.PARSE_REST_API_KEY)
 
 systemErrors = {
     1: 'Method not supported',
@@ -104,6 +104,9 @@ class sipMessage(Object):
     except Exception:
         print 'sipMessage() __init__ error'
         print traceback.format_exc()
+
+    def getHasSDP():
+        return self.hasSDP 
 
     def setSipMessage(self,msg):
         self.sipMsgMethodInfo = msg
@@ -206,14 +209,14 @@ class XmlRequestHandler(SimpleXMLRPCRequestHandler):
 # Run the server's main loop
 def startXmlRpc():
 
-    logging.info("-----------------------------------------------XML-RPC Request Handler Server started------------------------------------------------")
-    print "-----------------------------------------------XML-RPC Request Handler Server started------------------------------------------------"
+    logging.info("-----------------------------------------------XML-RPC Request Handler Server starting------------------------------------------------")
+    print "-----------------------------------------------XML-RPC Request Handler Server starting------------------------------------------------"
     logging.info("XML-RPC Hostname: " + sipLocatorConfig.XML_HOSTNAME +  " Port: " + str(sipLocatorConfig.XML_PORT))
     print "XML-RPC Hostname: " + sipLocatorConfig.XML_HOSTNAME +  " Port: " + str(sipLocatorConfig.XML_PORT)
     logging.info("XML-RPC API Version:  " + sipLocatorConfig.XML_VERSION)
     print "XML-RPC API Version:  " + sipLocatorConfig.XML_VERSION
     try:        
-        logging.info("-----------------------------------------------Server packet capture started------------------------------------------------")
+        logging.info("-----------------------------------------------XML-RPC Request started------------------------------------------------")
         threading.Thread(target=server.serve_forever()).start()
     except KeyboardInterrupt:
         print ""
@@ -253,7 +256,6 @@ def sipMessageInsertViaParse(sipMsg):
 def getSipCallFromParse(sipCallParam):
     try:
         print 'getSipCallFromParse() Contacting Parse CallID: ' + sipCallParam
-
         parseSipCall = sipCall.Query.get(sipCallID=sipCallParam)
         print type(parseSipCall)
         if parseSipCall!=None:
@@ -353,7 +355,7 @@ def processSipXmlParameters(msg,type):
     # 'getHeaders':True
     # 'getIP'     :True
 
-    # Verify authentication and then collect other parameters
+    # Verify authentication and then collect other parameters. Look for XML_SIP_MESSAGES
     if type==sipLocatorConfig.XML_SIP_MESSAGE:
 
         for element in params:
@@ -400,24 +402,44 @@ def processSipXmlParameters(msg,type):
                 member['sipMsgMethodInfo'] = parseSipMsg.sipMsgMethodInfo
                 # Filters
                 if getSDP:
+                    logInfo('processSipXmlParameters() Processing SIP Message filter getSDP ')
                     if parseSipMsg.hasSDP:    
                         member['sipMsgSdpInfo'] = parseSipMsg.getSdpInfo()
                     else:
                         member['sipMsgSdpInfo'] = []
-                if getHeaders:
+                    xmlResponse.append(member)
+                    member = {}
+                elif getHeaders:
+                    logInfo('processSipXmlParameters() Processing SIP Message filter getHeaders')
                     member['sipHeaderInfo'] = parseSipMsg.getSipHeaders()
-                if getIP:
+                    xmlResponse.append(member)
+                    member = {}
+                elif getIP:
+                    logInfo('processSipXmlParameters() Processing SIP Message filter getIP ')
                     member['sipMsgIpInfo']  = parseSipMsg.getSipMsgIpInfo()
-                # Add call to XML Response
-                xmlResponse.append(member)
-                member = {}
+                    xmlResponse.append(member)
+                    member = {}
+                elif hasSDP:
+                    logInfo('processSipXmlParameters() Processing SIP Message filter hasSDP ' )
+                    if parseSipMsg.hasSDP:    
+                        member['sipMsgSdpInfo'] = parseSipMsg.getSdpInfo()
+                    else:
+                        member['sipMsgSdpInfo'] = []
+                    xmlResponse.append(member)
+                    member = {}
+                else:
+                    xmlResponse.append(member)
+                    member = {}
+                # Add call to XML Response            
             return xmlResponse
 
-    elif type==sipLocatorConfig.XML_SIP_CALL:
+    # Verify authentication and then collect other parameters. Look for XML_SIP_CALL
+    elif type==sipLocatorConfig.XML_SIP_CALL:   
         for element in params:
             if element == 'sipCallID':
                 callID = params.get('sipCallID')       
 
+        # Error
         if len(callID)>256 and not isinstance(callID, str):
             xmlResponse.append(16)
             return xmlResponse
@@ -437,6 +459,7 @@ def processSipXmlParameters(msg,type):
         elif parseSipCall==None:
             xmlResponse.append(-1)
             return xmlResponse
+        # Call found in Parse    
         else:
             xmlResponse.append(parseSipCall.sipCallID)
             xmlResponse.append(parseSipCall.sipCallGeoPoint)
@@ -520,31 +543,6 @@ def pingMethod(msg):
     else:
      return 'invalid message: ' + msg
 
-def getSipMessage(msg):
-    print("getSipMessage() API get.sipmessage")
-    logInfo("getSipMessage() API get.sipmessage")
-    params = xmlRequestHandler(msg)
-    if (params == 34):
-        return fault_code(systemErrors[34],34)
-    elif(params == 101):
-        return fault_code(systemErrors[101],101)
-    else:
-        xmlResponse = processSipXmlParameters(params,sipLocatorConfig.XML_SIP_MESSAGE)
-        if 5 in xmlResponse:
-            return fault_code(systemErrors[5],5)
-        if 7 in xmlResponse:
-            return fault_code(systemErrors[7],7)    
-        if -1 in xmlResponse:
-            return fault_code(systemErrors[201],201)
-        else:
-            logInfo(xmlResponse)
-            return xmlResponse
-
-#API Method insert.sipmessage
-def insertSipMessage(msg):
-    print("insertSipMessage() API insertSipMessage")
-    logInfo("insertSipMessage() API insertSipMessage")
-
 #API Method get.sipcall
 def getSipCall(msg):
     print("getSipCall() API get.sipcall")
@@ -570,6 +568,31 @@ def getSipCall(msg):
 def insertSipCall(msg):
     print("insertSipCall() API insertSipCall")
     logInfo("insertSipCall() API insertSipCall")
+
+def getSipMessage(msg):
+    print("getSipMessage() API get.sipmessage")
+    logInfo("getSipMessage() API get.sipmessage")
+    params = xmlRequestHandler(msg)
+    if (params == 34):
+        return fault_code(systemErrors[34],34)
+    elif(params == 101):
+        return fault_code(systemErrors[101],101)
+    else:
+        xmlResponse = processSipXmlParameters(params,sipLocatorConfig.XML_SIP_MESSAGE)
+        if 5 in xmlResponse:
+            return fault_code(systemErrors[5],5)
+        if 7 in xmlResponse:
+            return fault_code(systemErrors[7],7)    
+        if -1 in xmlResponse:
+            return fault_code(systemErrors[201],201)
+        else:
+            logInfo(xmlResponse)
+            return xmlResponse
+
+#API Method insert.sipmessage
+def insertSipMessage(msg):
+    print("insertSipMessage() API insertSipMessage")
+    logInfo("insertSipMessage() API insertSipMessage")
 
 def getSipCallGeoLocation(msg):
     print("getSipCallGeoLocation() API get.sipcallgeolocation")
@@ -644,7 +667,7 @@ server.register_instance(Methods())
 # Main function
 def main():
 
-    logging.basicConfig(filename='logs/sipLocatorXml.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S') 
+    logging.basicConfig(filename='sipLocatorXml.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S') 
     logging.info("-----------------------------------------------Initializing sipLocator XML server-----------------------------------------------")
     print "-----------------------------------------------Initializing sipLocator XML server-----------------------------------------------"
     
