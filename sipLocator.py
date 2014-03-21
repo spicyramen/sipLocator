@@ -852,6 +852,9 @@ def processSipPacket(sipMsg,ipInfo):
     print "------------------------------------------------------processSipPacket() App Processing SIP message------------------------------------------------------"
     #ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
     #Remove Lines
+    
+    logging.info('processSipPacket() - Final sip Packet <![sipPacket[%s]]>\n', sipMsg) if ipInfo.get('protocol')==17:
+
     sipData = sipMsg.split('\r\n')
     # Create sipMessage Object for each SIP Packet received
     sipMessageObject = sipMessage()
@@ -1274,7 +1277,7 @@ def _sipTcpReceiver(socket,firstSipPacket):
             length = int(match.group(1))
             if len(sipMsg) == index + length: 
                 logging.info('_sipTcpReceiver() - No TCP Fragmentation detected. Packet Length(%d)',index+length) # No pending further content.
-                logging.info('_sipTcpReceiver() - Fragment (%d). Final sip Packet <![_sipTcpReceiver[%s]]>\n', fragmentNumber, firstSipPacket)
+                logging.info('_sipTcpReceiver() - Fragment (%d). Final sip Packet <![sipPacket[%s]]>\n', fragmentNumber, firstSipPacket)
                 return firstSipPacket
             else:
                 logging.info('_sipTcpReceiver() - TCP Fragmentation detected Pending further content. Packet Length(%d)',index+length)
@@ -1379,8 +1382,8 @@ def initPacketCapture():
     try:
         s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(sipLocatorConfig.NETWORK_FILTER))
         s.setdefaulttimeout(5)
-        """Initially all sockets are in blocking mode. In non-blocking mode, if a recv() call doesn’t find any data, or if a send() call can’t immediately dispose of the data, a error exception is raised."""
-        s.setblocking(0)
+        #Initially all sockets are in blocking mode. In non-blocking mode, if a recv() call doesn’t find any data, or if a send() call can’t immediately dispose of the data, a error exception is raised.
+        s.setblocking(True)
 
     except socket.error, msg:
         print 'initPacketCapture() - Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
