@@ -667,7 +667,7 @@ server.register_instance(Methods())
 # Main function
 def main():
 
-    logging.basicConfig(filename='sipLocatorXml.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S') 
+    logging.basicConfig(filename='logs/sipLocatorServerXml.log', level=logging.INFO, format='%(asctime)s.%(msecs).03d %(levelname)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S') 
     logging.info("-----------------------------------------------Initializing sipLocator XML server-----------------------------------------------")
     print "-----------------------------------------------Initializing sipLocator XML server-----------------------------------------------"
     

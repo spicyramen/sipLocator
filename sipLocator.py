@@ -1378,11 +1378,16 @@ def initPacketCapture():
     #define ETH_P_IP    0x0800          /* Only IP Packets */
     try:
         s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(sipLocatorConfig.NETWORK_FILTER))
+        s.setdefaulttimeout(5)
+        """Initially all sockets are in blocking mode. In non-blocking mode, if a recv() call doesn’t find any data, or if a send() call can’t immediately dispose of the data, a error exception is raised."""
+        s.setblocking(0)
+
     except socket.error, msg:
         print 'initPacketCapture() - Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
         sys.exit(1)   
     except Exception,e:
-        print e
+        logging.error()
+        logging.error("initPacketCapture - Exception calling processSipPacket() " + str(e))
         sys.exit(1)
 
     # Receive a packet
@@ -1461,7 +1466,7 @@ def initPacketCapture():
                             thread.start()
                             print 'initPacketCapture() - processSipPacket()'
                         except Exception,e:
-                            logging.error("initPacketCapture - Exception calling processSipPacket()" + str(e))
+                            logging.error("initPacketCapture - Exception calling processSipPacket() " + str(e))
                             print traceback.format_exc()
                             print e
 
@@ -1544,7 +1549,7 @@ def initPacketCapture():
                         thread.start()
                         print 'initPacketCapture() - processSipPacket()'
                     except Exception,e:
-                        logging.error("initPacketCapture - Exception calling processSipPacket()" + str(e))
+                        logging.error("initPacketCapture - Exception calling processSipPacket() " + str(e))
                         print traceback.format_exc()
                         print e
 
