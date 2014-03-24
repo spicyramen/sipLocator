@@ -148,9 +148,7 @@ class sipClf(Object):
     def getSipMsgMethod(self):
         return self.sipMsgMethodInfo
 
-    ##########################################
-    # * Process SIP Msg contents
-    ##########################################
+    ##### Process SIP Msg contents
     
     def processSipMsgTimeStamp(self):
         dt = datetime.datetime.utcnow()
@@ -673,12 +671,32 @@ class sipMessage(Object):
             print traceback.format_exc()
             print e
 
+# SipCall Object
+class logAgentCollection(Object):
+    """Create a log collection agent Object"""
+    def __init__(self):
+        logging.info("logAgent() - New logAgent object created()")
+        print 'logAgent() - New logAgent object created()'
+        self.vendor = ''   
+        self.transport = 0          # 0 - FTP | 1 - SFTP | 2 - SCP
+        self.remoteServer = ''
+        self.remotePort = ''
+        self.logType = ''
+        self.sizeLimit = ''
+        self.startTime = ''
+        self.endTime = ''
+    
+    def setVendorType(self,type):
+        self.vendor = type
+
+    def getVendorType(self):
+        return self.vendor
+    
+ 
 
 ############################################################################################################################################
-
-#Generate Random code
-def generateIdCode(size=6, chars=string.ascii_uppercase + string.digits):
-        return ''.join(random.choice(chars) for x in range(size))
+# Cloud functions
+############################################################################################################################################
 
 #Obtain geoLocation
 def processGeoLocation(srcIP):
@@ -696,6 +714,61 @@ def processGeoLocation(srcIP):
     except Exception,e:
         print traceback.format_exc()
         logging.error('processGeoLocation() - Exception - ' + str(e))
+
+#Connects to Parse using parse_rest
+#https://github.com/dgrtwo/ParsePy
+#@profile
+def sipCallInsertViaParse(sipCall):
+    # Connects to Parse via initial settings and created object
+    try:
+        sipCall.save()
+        logging.info("sipCallInsertViaParse() - sipCall Record created in Parse CallID: " + sipCall.getSipCallId())            
+        print 'sipCallInsertViaParse() - sipCall Record created in Parse CallID: ' + sipCall.getSipCallId()
+    except Exception,e:
+        logging.error('sipCallInsertViaParse() - Exception - ' + str(e))
+        print 'sipCallInsertViaParse() - Exception'
+        print traceback.format_exc()
+        print e
+
+#Connects to Parse using parse_rest
+#https://github.com/dgrtwo/ParsePy
+#@profile
+def sipMessageInsertViaParse(sipMsg):
+    # Connects to Parse via initial settings and created object
+    try:
+        sipMsg.save()
+        logging.info("sipMessageInsertViaParse() - sipMessage Record created in Parse. " + sipMsg.getSipMsgMethod() + " CallID: " + sipMsg.getSipMsgCallId())
+        print 'sipMessageInsertViaParse() - sipMessage Record created in Parse. ' + sipMsg.getSipMsgMethod() + ' CallID: ' + sipMsg.getSipMsgCallId()
+    except Exception,e:
+        logging.error('sipMessageInsertViaParse() - Exception: ' + str(e))
+        print 'sipMessageInsertViaParse() - Exception'
+        print traceback.format_exc()
+        print e
+
+# Send an SMS Message via Twilio Client
+# sipLocatorConfig file contains parameters
+
+def notifyViaSms(textMessage):
+    # Your Account Sid and Auth Token from twilio.com/user/account
+    try:
+        client = TwilioRestClient(sipLocatorConfig.TWILIO_ACCOUNT_SID, sipLocatorConfig.TWILIO_AUTH_TOKEN)
+        message = client.sms.messages.create(body=textMessage,
+        to=sipLocatorConfig.TWILIO_TO_PHONE,    # Replace with your phone number
+        from_=sipLocatorConfig.TWILIO_FROM_PHONE) # Replace with your Twilio number
+        print message.sid + " notifyViaSms() SMS Sent successfully!"
+        logging.info('notifyViaSms() - ' + str(message.sid) + ' SMS Sent successfully!')
+    except Exception,e:
+        logging.error("notifyViaSms() - Exception - Unable to send SMS message " + str(e))
+        print traceback.format_exc()
+        print e
+
+############################################################################################################################################
+# Helper functions
+############################################################################################################################################
+
+#Generate Random code
+def generateIdCode(size=6, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for x in range(size))
 
 
 # Obtain Message Status
@@ -719,12 +792,42 @@ def findSipMsgStatus(sipMethod):
         print traceback.format_exc()
         print e
 
+# validTcpPort
+# Verifies if its a Valid IP port 1-65535
+def validTcpPort(port):
+    try:
+        if port>=1 and port <=65535:
+            return True
+        else:
+            return False
+    except:
+        return False
+
+# validIpAddress
+# Verifies if its a Valid IP address
+def validIpAddress(address):
+    try: 
+        socket.inet_aton(address)
+        #logging.info('validIpAddress() - True - ' + str(address))
+        return True
+    except:
+        return False
+
+#Convert a string of 6 characters of ethernet address into a dash separated hex string
+#@profile
+def eth_addr (a) :
+  b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]) , ord(a[1]) , ord(a[2]), ord(a[3]), ord(a[4]) , ord(a[5]))
+  return b
+
+def printHex(data):
+    hex = binascii.hexlify(data)
+    formatted_hex = ':'.join(hex[i:i+2] for i in range(0, len(hex), 2))
+    logging.info('\nHex data: \n%s\n\n', formatted_hex)
 
 ############################################################################################################################################
-# Handle SIP Timers via threads
-
-
+# Sip Processing functions
 ############################################################################################################################################
+
 
 # SIP FSM State Machine implementation
 def sipStateMachine(sipMsg):
@@ -793,44 +896,74 @@ def sipStateMachine(sipMsg):
                 status = findSipMsgStatus(sipMessage)
                 #STATE - CALLING:
                 if sipTransactions[sipCallId] == 1:
-                    logging.info("sipStateMachine() CALLING state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    logging.info("sipStateMachine() |CALLING| state" + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                     if status == None:
                         sipTransactions[sipCallId] = sipState['INVALID']
+                        logging.warn("sipStateMachine() |CALLING| state to |INVALID|" + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    
                     elif status >=100 and status <=199:
                         sipTransactions[sipCallId] = sipState['PROCEEDING']
+                        logging.info("sipStateMachine() |CALLING| state to |PROCEEDING|" + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    
                     elif status >=200 and status <=299:                    
                         sipTransactions[sipCallId] = sipState['TERMINATED']
+                        logging.info("sipStateMachine() |CALLING| state to |TERMINATED|" + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+
                     elif status >=300 and status <=699:
+                        if status >=400 and status <500: 
+                            logging.warn("sipStateMachine() - Client Error | State |CALLING| to |COMPLETED| " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                        if status >=500 and status <600:
+                            logging.warn("sipStateMachine() - Server Error | State |CALLING| to |COMPLETED| " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                        if status >=600:
+                            logging.warn("sipStateMachine() - Global Error | State |CALLING| to |COMPLETED| " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                         sipTransactions[sipCallId] = sipState['COMPLETED']
+                    
                     else:
-                        logging.info("sipStateMachine() CALLING No Code state: " + sipMessage)
+                        logging.info("sipStateMachine() CALLING - No Valid Code state: " + sipMessage)
+                
                 #STATE - PROCEEDING:
                 elif sipTransactions[sipCallId] == 2:
-                    logging.info("sipStateMachine() PROCEEDING state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    logging.info("sipStateMachine() |PROCEEDING| state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                     if status == None:
                         sipTransactions[sipCallId] = sipState['INVALID']
+                        logging.warn("sipStateMachine() |PROCEEDING| state to |INVALID|" + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    
                     elif status >=100 and status <=199:
                         # Remains in same State
                         sipTransactions[sipCallId] = sipState['PROCEEDING']
+                        logging.info("sipStateMachine() |PROCEEDING| state to |PROCEEDING|" + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    
                     elif status >=200 and status <=299:
                         sipTransactions[sipCallId] = sipState['TERMINATED']
+                        logging.info("sipStateMachine() |PROCEEDING| state to |TERMINATED|" + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    
                     elif status >=300 and status <=699:
+                        if status >=400 and status <500: 
+                            logging.warn("sipStateMachine() - Client Error | State |PROCEEDING| to |COMPLETED| " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                        if status >=500 and status <600:
+                            logging.warn("sipStateMachine() - Server Error | State |PROCEEDING| to |COMPLETED| " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                        if status >=600:
+                            logging.warn("sipStateMachine() - Global Error | State |PROCEEDING| to |COMPLETED| " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                         sipTransactions[sipCallId] = sipState['COMPLETED']
+                    
                     else:
-                        logging.info("sipStateMachine() PROCEEDING No Code state: " + sipMessage + " - " + sipMessage)
+                        logging.info("sipStateMachine() |PROCEEDING| No Valid Code state: " + sipMessage + " - " + sipMessage)
+                
                 #STATE - COMPLETED:
                 elif sipTransactions[sipCallId] == 3:
-                    logging.info("sipStateMachine() COMPLETED state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    logging.info("sipStateMachine() |COMPLETED| state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                     logging.info("sipStateMachine() Timer D started " + sipMessage + " " + sipCallId)
+                
                 #STATE - TERMINATED:
                 elif sipTransactions[sipCallId] == 4:
-                    logging.info("sipStateMachine() TERMINATED state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    logging.info("sipStateMachine() |TERMINATED| state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                
                 #STATE - INVALID:
                 else:
-                    logging.error("sipStateMachine() INVALID state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                    logging.error("sipStateMachine() |INVALID| state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                     sipTransactions[sipCallId] = sipState['INVALID']
             else:
-                logging.error("sipStateMachine() INVALID state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
+                logging.error("sipStateMachine() |INVALID| state " + sipMessage + " " + sipCallId  + " - Code: " + str(status))
                 sipTransactions[sipCallId] = sipState['INVALID']
 
     except Exception,e:
@@ -853,7 +986,8 @@ def processSipPacket(sipMsg,ipInfo):
     #ipInfo = [str(protocol),str(s_addr),str(source_port),str(d_addr),str(dest_port)]
     #Remove Lines
     
-    logging.info('processSipPacket() - Final sip Packet <![sipPacket[%s]]>\n', sipMsg) if ipInfo.get('protocol')==17:
+    if ipInfo.get('protocol')==17:
+        logging.info('processSipPacket() - Final sip Packet <![sipPacket[%s]]>\n', sipMsg) 
 
     sipData = sipMsg.split('\r\n')
     # Create sipMessage Object for each SIP Packet received
@@ -922,43 +1056,7 @@ def processSipPacket(sipMsg,ipInfo):
         print traceback.format_exc()
         print e  
 
-# Send an SMS Message via Twilio Client
-# sipLocatorConfig file contains parameters
 
-def notifyViaSms(textMessage):
-    # Your Account Sid and Auth Token from twilio.com/user/account
-    try:
-        client = TwilioRestClient(sipLocatorConfig.TWILIO_ACCOUNT_SID, sipLocatorConfig.TWILIO_AUTH_TOKEN)
-        message = client.sms.messages.create(body=textMessage,
-        to=sipLocatorConfig.TWILIO_TO_PHONE,    # Replace with your phone number
-        from_=sipLocatorConfig.TWILIO_FROM_PHONE) # Replace with your Twilio number
-        print message.sid + " notifyViaSms() SMS Sent successfully!"
-        logging.info('notifyViaSms() - ' + str(message.sid) + ' SMS Sent successfully!')
-    except Exception,e:
-        logging.error("notifyViaSms() - Exception - Unable to send SMS message " + str(e))
-        print traceback.format_exc()
-        print e
-
-# validTcpPort
-# Verifies if its a Valid IP port 1-65535
-def validTcpPort(port):
-    try:
-        if port>=1 and port <=65535:
-            return True
-        else:
-            return False
-    except:
-        return False
-
-# validIpAddress
-# Verifies if its a Valid IP address
-def validIpAddress(address):
-    try: 
-        socket.inet_aton(address)
-        #logging.info('validIpAddress() - True - ' + str(address))
-        return True
-    except:
-        return False
 
 # ccProcessSipInformation
 # Returns real IP address
@@ -1212,46 +1310,10 @@ def ccSipEngine(sipMsg):
                 logging.info('ccSipEngine() Re-Invite detected().')
                 print 'ccSipEngine() Re-Invite detected().'    
 
-#Connects to Parse using parse_rest
-#https://github.com/dgrtwo/ParsePy
-#@profile
-def sipCallInsertViaParse(sipCall):
-    # Connects to Parse via initial settings and created object
-    try:
-        sipCall.save()
-        logging.info("sipCallInsertViaParse() - sipCall Record created in Parse CallID: " + sipCall.getSipCallId())            
-        print 'sipCallInsertViaParse() - sipCall Record created in Parse CallID: ' + sipCall.getSipCallId()
-    except Exception,e:
-        logging.error('sipCallInsertViaParse() - Exception - ' + str(e))
-        print 'sipCallInsertViaParse() - Exception'
-        print traceback.format_exc()
-        print e
 
-#Connects to Parse using parse_rest
-#https://github.com/dgrtwo/ParsePy
-#@profile
-def sipMessageInsertViaParse(sipMsg):
-    # Connects to Parse via initial settings and created object
-    try:
-        sipMsg.save()
-        logging.info("sipMessageInsertViaParse() - sipMessage Record created in Parse. " + sipMsg.getSipMsgMethod() + " CallID: " + sipMsg.getSipMsgCallId())
-        print 'sipMessageInsertViaParse() - sipMessage Record created in Parse. ' + sipMsg.getSipMsgMethod() + ' CallID: ' + sipMsg.getSipMsgCallId()
-    except Exception,e:
-        logging.error('sipMessageInsertViaParse() - Exception: ' + str(e))
-        print 'sipMessageInsertViaParse() - Exception'
-        print traceback.format_exc()
-        print e
-
-#Convert a string of 6 characters of ethernet address into a dash separated hex string
-#@profile
-def eth_addr (a) :
-  b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]) , ord(a[1]) , ord(a[2]), ord(a[3]), ord(a[4]) , ord(a[5]))
-  return b
-
-def printHex(data):
-    hex = binascii.hexlify(data)
-    formatted_hex = ':'.join(hex[i:i+2] for i in range(0, len(hex), 2))
-    logging.info('\nHex data: \n%s\n\n', formatted_hex)
+##################################################################################################################################################################
+# Process TCP packets and refragment them
+##################################################################################################################################################################
 
 #Catch all TCP fragmented
 def _sipTcpReceiver(socket,firstSipPacket):
@@ -1381,17 +1443,16 @@ def initPacketCapture():
     #define ETH_P_IP    0x0800          /* Only IP Packets */
     try:
         s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs(sipLocatorConfig.NETWORK_FILTER))
-        s.setdefaulttimeout(5)
-        #Initially all sockets are in blocking mode. In non-blocking mode, if a recv() call doesn’t find any data, or if a send() call can’t immediately dispose of the data, a error exception is raised.
         s.setblocking(True)
 
     except socket.error, msg:
+        print traceback.format_exc()
         print 'initPacketCapture() - Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
-        sys.exit(1)   
+        logging.error('initPacketCapture() - Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
     except Exception,e:
-        logging.error()
+        print traceback.format_exc()
+        print 'initPacketCapture - Exception calling processSipPacket() ' + str(e)
         logging.error("initPacketCapture - Exception calling processSipPacket() " + str(e))
-        sys.exit(1)
 
     # Receive a packet
     while True:
@@ -1487,29 +1548,7 @@ def initPacketCapture():
                     ipInfo['d_addr'] = str(d_addr)
                     ipInfo['dest_port'] = dest_port
                     # TODO Process WS
-
-            #ICMP Packets
-            elif protocol == 1 :
-                u = iph_length + eth_length
-                icmph_length = 4
-                icmp_header = packet[u:u+4]
-     
-                #now unpack them :)
-                icmph = unpack('!BBH' , icmp_header)
-                 
-                icmp_type = icmph[0]
-                code = icmph[1]
-                checksum = icmph[2]
-                 
-                print 'ICMP Packet - Type : ' + str(icmp_type) + ' Code : ' + str(code) + ' Checksum : ' + str(checksum)
-                 
-                h_size = eth_length + iph_length + icmph_length
-                data_size = len(packet) - h_size
-                 
-                #get data from the packet
-                data = packet[h_size:]           
-                #print 'Data : ' + data
-     
+ 
             #UDP packets
             elif protocol == 17 :
                 u = iph_length + eth_length
@@ -1556,10 +1595,32 @@ def initPacketCapture():
                         print traceback.format_exc()
                         print e
 
+             #ICMP Packets
+            elif protocol == 1 :
+                u = iph_length + eth_length
+                icmph_length = 4
+                icmp_header = packet[u:u+4]
+     
+                #now unpack them :)
+                icmph = unpack('!BBH' , icmp_header)
+                 
+                icmp_type = icmph[0]
+                code = icmph[1]
+                checksum = icmph[2]
+                 
+                print 'ICMP Packet - Type : ' + str(icmp_type) + ' Code : ' + str(code) + ' Checksum : ' + str(checksum)
+            
+                h_size = eth_length + iph_length + icmph_length
+                data_size = len(packet) - h_size
+                 
+                #get data from the packet
+                data = packet[h_size:]           
+                #print 'Data : ' + data
+
             #some other IP packet like IGMP
             else :
-                logging.error('Packet - Protocol other than TCP/UDP/ICMP')
-                print 'Packet - Protocol other than TCP/UDP/ICMP'
+                logging.warn('Packet - Protocol other than TCP/UDP/ICMP Protocol: ' + str(protocol))
+                print 'Packet - Protocol other than TCP/UDP/ICMP Protocol: ' + str(protocol)
 
 # Trace settings for SIP CLF format function (%(threadName)s)
 def traceSettings(logdir=None, scrnlog=False, txtlog=True, loglevel=logging.DEBUG):
